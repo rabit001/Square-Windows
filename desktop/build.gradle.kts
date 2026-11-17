@@ -5,6 +5,17 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization") version "2.3.21"
 }
 
+val javafxVersion = "17.0.21"
+val osName = System.getProperty("os.name").lowercase()
+val osArch = System.getProperty("os.arch").lowercase()
+val javafxPlatform = when {
+    osName.contains("win") -> "win"
+    osName.contains("mac") && (osArch.contains("aarch64") || osArch.contains("arm64")) -> "mac-aarch64"
+    osName.contains("mac") -> "mac"
+    osArch.contains("aarch64") || osArch.contains("arm64") -> "linux-aarch64"
+    else -> "linux"
+}
+
 kotlin {
     jvmToolchain(17)
 
@@ -31,6 +42,14 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.5.2")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.brotli:dec:0.1.2")
+
+    // Extract public YouTube stream metadata with the upstream extractor.
+    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.27.1")
+
+    // JavaFX Media provides AAC/MP3 decoding and HTTP(S) playback on desktop.
+    implementation("org.openjfx:javafx-base:$javafxVersion:$javafxPlatform")
+    implementation("org.openjfx:javafx-graphics:$javafxVersion:$javafxPlatform")
+    implementation("org.openjfx:javafx-media:$javafxVersion:$javafxPlatform")
 
     testImplementation(kotlin("test-junit"))
     testImplementation("junit:junit:4.13.2")
