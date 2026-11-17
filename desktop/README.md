@@ -40,7 +40,12 @@ Run desktop unit tests:
 .\gradlew.bat -p desktop test
 ```
 
-The desktop now includes an anonymous YouTube Music song-catalogue search adapter using the upstream vendored InnerTube client. Google account sign-in, the YouTube Music library, stream resolution, and playback are not yet connected. Spotify's desktop adapter and playback engine are also not yet connected.
+## Current integrations
+
+- Anonymous YouTube Music song-catalogue search using the vendored InnerTube client.
+- A first audio playback spike that resolves an item through NewPipeExtractor and plays AAC/M4A or MP3 through JavaFX Media on Windows.
+
+The live playback path still needs to be tested on Windows. It uses undocumented YouTube interfaces and may stop working when the provider changes them. It does not provide Google account sign-in, the YouTube Music library, paid/account-only content, or a guarantee of service availability. Spotify authentication and playback are not connected yet.
 
 ## Desktop backend boundary
 
@@ -48,7 +53,9 @@ The desktop now includes an anonymous YouTube Music song-catalogue search adapte
 - `backend/MusicProvider.kt` defines desktop account and search operations.
 - `backend/MusicProviderRegistry.kt` owns registered providers and source selection.
 - `backend/youtube/YouTubeMusicSearchProvider.kt` adapts anonymous song search to the desktop contract.
+- `backend/youtube/YouTubeAudioStreamResolver.kt` resolves supported audio stream URLs.
 - `playback/PlaybackEngine.kt` defines playback state and controls without Android Media3.
+- `playback/YouTubeMusicPlaybackEngine.kt` uses JavaFX Media as the initial desktop output engine.
 
 The desktop build compiles the upstream `innertube/src/main/kotlin` sources directly as JVM sources. The Android `innertube` module and its build configuration remain unchanged. A small JVM logging bridge substitutes for the Android Timber logger at desktop compile/runtime.
 
