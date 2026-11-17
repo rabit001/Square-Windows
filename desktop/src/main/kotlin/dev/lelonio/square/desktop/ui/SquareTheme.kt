@@ -12,7 +12,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -35,9 +34,7 @@ object SquareColors {
     val BorderLight = Color.Black.copy(alpha = 0.09f)
 }
 
-private val InstrumentSerif = FontFamily(
-    Font("fonts/instrument_serif.ttf", weight = FontWeight.Normal),
-)
+private val InstrumentSerif = FontFamily.Serif
 
 private fun squareTypography() = Typography(
     displayLarge = TextStyle(
