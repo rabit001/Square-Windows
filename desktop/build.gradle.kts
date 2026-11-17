@@ -11,6 +11,10 @@ kotlin {
 dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.material)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+
+    testImplementation(kotlin("test-junit"))
+    testImplementation("junit:junit:4.13.2")
 }
 
 compose.desktop {

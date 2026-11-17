@@ -34,10 +34,21 @@ Create the Windows installer:
 .\gradlew.bat -p desktop packageExe
 ```
 
-The initial app is only a UI shell. It does not yet authenticate with Spotify or YouTube Music and does not play audio.
+Run desktop unit tests:
 
-## Architecture rule
+```powershell
+.\gradlew.bat -p desktop test
+```
 
-Desktop code stays under this directory until a piece is proven platform-independent. Do not add Windows-specific imports to the Android app module. Shared code should be extracted deliberately, with Android adapters left intact.
+The initial app remains a UI shell. The desktop provider and playback contracts are now separated from Android APIs, but real Spotify and YouTube Music adapters are not connected yet.
+
+## Desktop backend boundary
+
+- `model/` contains provider-neutral catalogue types.
+- `backend/MusicProvider.kt` defines desktop account and search operations.
+- `backend/MusicProviderRegistry.kt` owns registered providers and source selection.
+- `playback/PlaybackEngine.kt` defines playback state and controls without Android Media3.
+
+Provider adapters must use desktop-compatible networking, authentication and secure storage. Playback engines must use a Windows-compatible audio output. Do not import Android `Context`, Android Media3 or Android services into the desktop module.
 
 See [the Windows port plan](../docs/WINDOWS_PORT_PLAN.md) for the staged implementation and memory constraints.
