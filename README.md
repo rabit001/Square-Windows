@@ -8,7 +8,7 @@ This repository is not a GitHub fork of the upstream project. It contains upstre
 
 The first Windows desktop UI shell has been launched, and a Windows `.exe` installer package has been generated successfully.
 
-The current shell is a starting point, not a feature-complete music client. Anonymous YouTube Music song-catalogue search is wired into the Search screen. A first Windows playback spike now resolves compatible AAC/M4A or MP3 streams and hands them to JavaFX Media; real playback still needs to be verified on Windows. Spotify authentication and playback, Google account sign-in, and the YouTube Music library are **not implemented yet**.
+The current shell is a starting point, not a feature-complete music client. Anonymous YouTube Music song-catalogue search is wired into the Search screen. A first Windows playback spike now resolves AAC/M4A or MP3 streams, writes them to temporary local files in bounded memory, and hands those files to JavaFX Media; real playback still needs to be verified on Windows. Spotify authentication and playback, Google account sign-in, and the YouTube Music library are **not implemented yet**.
 
 ## Run the desktop app
 
