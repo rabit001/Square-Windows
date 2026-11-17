@@ -3,6 +3,7 @@ package dev.lelonio.square.desktop.playback
 import dev.lelonio.square.desktop.backend.youtube.YouTubeAudioStreamResolver
 import dev.lelonio.square.desktop.model.MusicTrack
 import java.io.File
+import java.util.Locale
 import javafx.scene.media.Media
 import javafx.scene.media.MediaPlayer
 import javafx.util.Duration
@@ -180,6 +181,11 @@ class YouTubeMusicPlaybackEngine(
 
     private fun currentPosition(mediaPlayer: MediaPlayer): Long =
         mediaPlayer.currentTime.toMillis().toLong().coerceAtLeast(0)
+
+    private fun formatDuration(durationMs: Long): String {
+        val totalSeconds = durationMs / 1_000
+        return String.format(Locale.ROOT, "%d:%02d", totalSeconds / 60, totalSeconds % 60)
+    }
 
     private fun failIfCurrent(track: MusicTrack, message: String) {
         if (activeTrack?.id == track.id) {
