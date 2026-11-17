@@ -2,7 +2,7 @@
 
 ## Project boundary
 
-The upstream project is an Android app. This repository is a fork, and the Windows port is developed on a separate branch and in a separate `desktop/` Gradle build. The existing Android app remains the reference implementation and must continue to build unchanged.
+The upstream project is an Android app. This is an independent public repository containing a copy of the upstream source; it has no GitHub fork relationship with the upstream repository. The Windows port lives in a separate `desktop/` Gradle build. Keep the existing Android app as the reference implementation and avoid changing its build configuration for Windows-specific work.
 
 ## Confirmed source architecture
 
@@ -53,9 +53,10 @@ Preserve the upstream GPL-3.0-or-later licence and notices. Audit every dependen
 
 ## Status
 
-- [x] Forked upstream source into this repository
+- [x] Imported upstream source into this independent repository
 - [x] Created isolated desktop build and first UI shell
-- [ ] Verify desktop shell build on Windows
+- [x] Launched the desktop shell on Windows
+- [x] Generated the Windows installer package on Windows
 - [ ] Establish baseline memory measurements
 - [ ] Implement Spotify Windows playback spike
 - [ ] Implement YouTube Music Windows playback spike
