@@ -22,7 +22,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jetbrains.skia.Image as SkiaImage
-import org.jetbrains.skia.toComposeImageBitmap
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import java.util.concurrent.TimeUnit
 
 private val ArtworkHttp = OkHttpClient.Builder()
