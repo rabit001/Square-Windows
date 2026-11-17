@@ -193,7 +193,7 @@ internal class LocalAudioStreamProxy(
                     executeRange(cursor, minOf(end, safeAdd(cursor, CHUNK_BYTES - 1)))
                 }
 
-                if (currentResponse === response) {
+                val servedThrough = if (currentResponse === response) {
                     copyRangeBody(currentResponse, cursor, end, output)
                 } else {
                     currentResponse.use { next ->
@@ -207,7 +207,6 @@ internal class LocalAudioStreamProxy(
                     }
                 }
 
-                val servedThrough = lastServedEnd
                 if (servedThrough < cursor) {
                     throw EOFException("YouTube returned an empty audio range at byte $cursor.")
                 }
@@ -217,15 +216,12 @@ internal class LocalAudioStreamProxy(
         }
     }
 
-    // Updated only by the single request worker inside serveMedia.
-    private var lastServedEnd: Long = -1L
-
     private fun copyRangeBody(
         response: okhttp3.Response,
         requestedStart: Long,
         requestedEnd: Long,
         output: BufferedOutputStream,
-    ) {
+    ): Long {
         val range = parseContentRange(response.header("Content-Range"))
             ?: throw IOException("YouTube audio response has no valid Content-Range.")
         if (range.start != requestedStart) {
@@ -256,11 +252,11 @@ internal class LocalAudioStreamProxy(
             }
         }
         output.flush()
-        lastServedEnd = segmentEnd
         System.err.println(
             "[SquarePlayback] Audio chunk delivered: bytes=$requestedStart-$segmentEnd, " +
                 "stream=${audio.streamId}",
         )
+        return segmentEnd
     }
 
     private fun serveNonRangeResponse(

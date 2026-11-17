@@ -1,5 +1,7 @@
 package dev.lelonio.square.desktop.model
 
+import kotlinx.serialization.Serializable
+
 /** The catalogue and playback source that owns a music item. */
 enum class MusicProviderId(val displayName: String) {
     SPOTIFY("Spotify"),
@@ -7,6 +9,7 @@ enum class MusicProviderId(val displayName: String) {
 }
 
 /** The role a playable result has in a music catalogue. */
+@Serializable
 enum class MusicTrackKind {
     SONG,
     VIDEO,
@@ -26,6 +29,7 @@ sealed interface MusicSearchItem {
     val providerUri: String
 }
 
+@Serializable
 data class MusicTrack(
     override val id: String,
     override val title: String,

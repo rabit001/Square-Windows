@@ -15,18 +15,14 @@ sealed interface PlaybackState {
         val track: MusicTrack,
         val positionMs: Long,
     ) : PlaybackState
+    data class Completed(val track: MusicTrack) : PlaybackState
     data class Failed(
         val message: String,
         val track: MusicTrack? = null,
     ) : PlaybackState
 }
 
-/**
- * Platform-neutral playback controls.
- *
- * Windows implementations can use a desktop audio backend; this contract does
- * not expose Android Media3, AudioTrack, Context or service objects.
- */
+/** Platform-neutral playback controls. */
 interface PlaybackEngine {
     val state: StateFlow<PlaybackState>
 
