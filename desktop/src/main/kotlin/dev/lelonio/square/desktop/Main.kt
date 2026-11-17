@@ -256,6 +256,14 @@ private fun YouTubeMusicSearchPanel() {
                         onValueChange = { query = it },
                         modifier = Modifier.weight(1f),
                         singleLine = true,
+                        colors = androidx.compose.material.TextFieldDefaults.textFieldColors(
+                            textColor = Color.White,
+                            backgroundColor = Color(0xFF1B1B20),
+                            cursorColor = Accent,
+                            focusedIndicatorColor = Accent,
+                            unfocusedIndicatorColor = Muted.copy(alpha = 0.55f),
+                            placeholderColor = Muted,
+                        ),
                         placeholder = { Text("Search songs or artists") },
                     )
                     Button(
