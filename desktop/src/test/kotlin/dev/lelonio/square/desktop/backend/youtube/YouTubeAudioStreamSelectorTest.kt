@@ -48,7 +48,7 @@ class YouTubeAudioStreamSelectorTest {
 
     @Test
     fun mapsMediaFormatsToJavaFxCompatibleMimeTypes() {
-        assertEquals("audio/mp4", audioContentType(MediaFormat.M4A))
+        assertEquals("audio/x-m4a", audioContentType(MediaFormat.M4A))
         assertEquals("audio/mpeg", audioContentType(MediaFormat.MP3))
     }
 

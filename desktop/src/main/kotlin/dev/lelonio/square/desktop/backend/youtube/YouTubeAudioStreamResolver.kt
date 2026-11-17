@@ -115,7 +115,7 @@ internal fun audioFileSuffix(format: MediaFormat): String = when (format) {
 }
 
 internal fun audioContentType(format: MediaFormat): String = when (format) {
-    MediaFormat.M4A -> "audio/mp4"
+    MediaFormat.M4A -> "audio/x-m4a"
     MediaFormat.MP3 -> "audio/mpeg"
     else -> throw IllegalArgumentException("Unsupported desktop audio format: $format")
 }
