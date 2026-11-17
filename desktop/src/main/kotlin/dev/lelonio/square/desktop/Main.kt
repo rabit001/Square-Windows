@@ -188,7 +188,7 @@ private fun SquareDesktopApp(playbackEngine: YouTubeMusicPlaybackEngine) {
                     }
                     val playbackDescription = when (val state = playbackState) {
                         PlaybackState.Idle -> "Choose a YouTube Music result to play"
-                        is PlaybackState.Buffering -> "Resolving stream or buffering…"
+                        is PlaybackState.Buffering -> "Preparing audio stream…"
                         is PlaybackState.Playing -> "Playing · ${formatDuration(state.positionMs)}"
                         is PlaybackState.Paused -> "Paused · ${formatDuration(state.positionMs)}"
                         is PlaybackState.Failed -> state.message
