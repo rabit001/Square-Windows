@@ -21,6 +21,7 @@ import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.material.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,6 +37,8 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import dev.lelonio.square.desktop.backend.youtube.YouTubeMusicSearchProvider
 import dev.lelonio.square.desktop.model.MusicTrack
+import dev.lelonio.square.desktop.playback.PlaybackState
+import dev.lelonio.square.desktop.playback.YouTubeMusicPlaybackEngine
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -46,17 +49,23 @@ private val Muted = Color(0xFF9A9AA4)
 private val Accent = Color(0xFFB9A7FF)
 
 fun main() = application {
+    val playbackEngine = YouTubeMusicPlaybackEngine()
     Window(
-        onCloseRequest = ::exitApplication,
+        onCloseRequest = {
+            playbackEngine.shutdown()
+            exitApplication()
+        },
         title = "Square Desktop",
     ) {
-        SquareDesktopApp()
+        SquareDesktopApp(playbackEngine)
     }
 }
 
 @Composable
-private fun SquareDesktopApp() {
+private fun SquareDesktopApp(playbackEngine: YouTubeMusicPlaybackEngine) {
     var selectedSection by remember { mutableStateOf("Home") }
+    val playbackState by playbackEngine.state.collectAsState()
+    val playbackScope = rememberCoroutineScope()
 
     MaterialTheme {
         Surface(
@@ -130,7 +139,7 @@ private fun SquareDesktopApp() {
                         Spacer(modifier = Modifier.size(12.dp))
 
                         if (selectedSection == "Search") {
-                            YouTubeMusicSearchPanel()
+                            YouTubeMusicSearchPanel(playbackEngine)
                         } else {
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
@@ -148,12 +157,12 @@ private fun SquareDesktopApp() {
                                         fontWeight = FontWeight.SemiBold,
                                     )
                                     Text(
-                                        text = "The first catalogue integration is being added. Spotify, account sign-in and audio playback are not connected yet.",
+                                        text = "YouTube Music search and the first Windows audio-playback spike are available from Search. Spotify and account sign-in are not connected yet.",
                                         color = Muted,
                                         fontSize = 14.sp,
                                     )
                                     Text(
-                                        text = "Open Search to try the YouTube Music song search preview.",
+                                        text = "Open Search to find a song and try playback.",
                                         color = Accent,
                                         fontSize = 13.sp,
                                     )
@@ -170,11 +179,47 @@ private fun SquareDesktopApp() {
                         .padding(horizontal = 20.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Nothing playing", color = Color.White, fontWeight = FontWeight.Medium)
-                        Text("Playback engine is not connected yet", color = Muted, fontSize = 12.sp)
+                    val playingTrack = when (val state = playbackState) {
+                        is PlaybackState.Buffering -> state.track
+                        is PlaybackState.Playing -> state.track
+                        is PlaybackState.Paused -> state.track
+                        is PlaybackState.Failed -> state.track
+                        PlaybackState.Idle -> null
                     }
-                    Text("YouTube Music search preview", color = Muted, fontSize = 12.sp)
+                    val playbackDescription = when (val state = playbackState) {
+                        PlaybackState.Idle -> "Choose a YouTube Music result to play"
+                        is PlaybackState.Buffering -> "Resolving stream or buffering…"
+                        is PlaybackState.Playing -> "Playing · ${formatDuration(state.positionMs)}"
+                        is PlaybackState.Paused -> "Paused · ${formatDuration(state.positionMs)}"
+                        is PlaybackState.Failed -> state.message
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            playingTrack?.title ?: "Nothing playing",
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                        )
+                        Text(
+                            playbackDescription,
+                            color = if (playbackState is PlaybackState.Failed) Color(0xFFFF8A80) else Muted,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                        )
+                    }
+                    when (playbackState) {
+                        is PlaybackState.Playing -> TextButton(
+                            onClick = { playbackScope.launch { playbackEngine.pause() } },
+                        ) { Text("Pause", color = Color.White) }
+                        is PlaybackState.Paused -> TextButton(
+                            onClick = { playbackScope.launch { playbackEngine.resume() } },
+                        ) { Text("Resume", color = Color.White) }
+                        is PlaybackState.Failed -> TextButton(
+                            onClick = { playbackScope.launch { playbackEngine.stop() } },
+                        ) { Text("Dismiss", color = Color.White) }
+                        is PlaybackState.Buffering -> Text("Loading…", color = Accent, fontSize = 12.sp)
+                        PlaybackState.Idle -> Text("YouTube Music", color = Muted, fontSize = 12.sp)
+                    }
                 }
             }
         }
@@ -182,7 +227,7 @@ private fun SquareDesktopApp() {
 }
 
 @Composable
-private fun YouTubeMusicSearchPanel() {
+private fun YouTubeMusicSearchPanel(playbackEngine: YouTubeMusicPlaybackEngine) {
     val provider = remember { YouTubeMusicSearchProvider() }
     val scope = rememberCoroutineScope()
 
@@ -242,7 +287,7 @@ private fun YouTubeMusicSearchPanel() {
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    text = "Anonymous song catalogue search. Google sign-in and audio playback are not connected yet.",
+                    text = "Anonymous song catalogue search and Windows audio playback preview. Google sign-in and library access are not connected yet.",
                     color = Muted,
                     fontSize = 13.sp,
                 )
@@ -311,6 +356,11 @@ private fun YouTubeMusicSearchPanel() {
                     }
                     track.durationMs?.let {
                         Text(formatDuration(it), color = Muted, fontSize = 12.sp)
+                    }
+                    Button(
+                        onClick = { scope.launch { playbackEngine.play(track) } },
+                    ) {
+                        Text("Play")
                     }
                 }
             }
