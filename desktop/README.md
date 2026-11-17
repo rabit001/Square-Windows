@@ -26,18 +26,19 @@ Run desktop tests:
 .\gradlew.bat -p desktop test
 ```
 
-## UI port status
+## Current Windows features
 
-The desktop UI follows Square's main navigation model: Home, New, Radio, Library and Search, with an integrated mini-player dock and an expanded player screen. It uses the original Square neutral palette, violet accent, Instrument Serif display face and Phosphor icon family.
+- Dark and light appearance.
+- YouTube Music anonymous search across songs, videos, artists, albums, playlists, podcasts and episodes.
+- Artist, album, playlist and podcast detail pages, including playlist continuation.
+- YouTube Music audio resolution with a local HTTP media bridge. The bridge retrieves Googlevideo audio in bounded 512 KiB range requests instead of relying on one long request.
+- Playback retry with a fresh stream URL, playback state reporting, seek, previous/next track controls and queue progression.
+- Persistent recently played history in the user's `.square-windows/library/` folder.
+- Windows installer packaging through Gradle.
 
-The current Home, Library and Search pages use desktop state and the YouTube Music search provider. New and Radio provide entry points into catalogue searches. The full Android account state, Spotify integration, personalised catalogue shelves, playlists, lyrics, downloads, queue, EQ/effects and advanced player UI remain to be ported.
+## Not yet ported from Android Square
 
-## Playback and provider status
-
-- Anonymous YouTube Music song search uses Square's vendored InnerTube source.
-- Windows playback resolves public AAC/M4A or MP3 stream URLs and relays them through a loopback HTTP proxy. JavaFX receives an explicit audio MIME type and its byte-range requests are forwarded upstream, so playback can begin before the whole track has downloaded.
-- Google account sign-in and the YouTube Music library are not connected.
-- Spotify desktop authentication and playback are not connected.
+This is not yet full feature parity with the Android app. Spotify account authentication and playback, YouTube account sign-in and personal library, synced lyrics, full playlist editing, offline downloads, audio effects/equalizer, personalised Home/New/Radio feeds, crossfade and advanced queue management remain to be implemented. The New and Radio pages currently provide discovery searches rather than the original personalised service feeds.
 
 Some YouTube access uses undocumented interfaces and is not an official YouTube API integration. Provider policies and permissions are separate from the source-code licence.
 

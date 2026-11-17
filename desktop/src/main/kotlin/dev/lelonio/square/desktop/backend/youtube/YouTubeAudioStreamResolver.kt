@@ -11,6 +11,7 @@ import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.StreamInfo
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.ConcurrentHashMap
 
 data class ResolvedYouTubeAudio(
     val streamUrl: String,
@@ -30,7 +31,13 @@ data class ResolvedYouTubeAudio(
  */
 class YouTubeAudioStreamResolver {
 
-    suspend fun resolve(track: MusicTrack): ResolvedYouTubeAudio = withContext(Dispatchers.IO) {
+    private val cache = ConcurrentHashMap<String, CachedStream>()
+    private val locks = ConcurrentHashMap<String, Any>()
+
+    suspend fun resolve(
+        track: MusicTrack,
+        forceRefresh: Boolean = false,
+    ): ResolvedYouTubeAudio = withContext(Dispatchers.IO) {
         val videoId = track.id.trim()
         require(videoId.isNotEmpty() && videoId.all {
             it.isLetterOrDigit() || it == '-' || it == '_'
@@ -38,7 +45,16 @@ class YouTubeAudioStreamResolver {
             "The selected YouTube Music item has an invalid video ID."
         }
 
-        ensureExtractorInitialized()
+        val lock = locks.computeIfAbsent(videoId) { Any() }
+        synchronized(lock) {
+            val now = System.currentTimeMillis()
+            if (!forceRefresh) {
+                cache[videoId]?.takeIf { now - it.createdAtMs < CACHE_TTL_MS }?.let {
+                    return@withContext it.audio.copy(expectedDurationMs = track.durationMs)
+                }
+            }
+            cache.remove(videoId)
+            ensureExtractorInitialized()
 
         val encodedId = URLEncoder.encode(videoId, StandardCharsets.UTF_8.name())
         val info = StreamInfo.getInfo(
@@ -64,12 +80,17 @@ class YouTubeAudioStreamResolver {
             expectedDurationMs = track.durationMs,
         )
 
-        System.err.println(
-            "[SquarePlayback] Stream resolved: format=${resolved.format}, " +
-                "bitrate=${resolved.streamBitrate}, delivery=${resolved.deliveryMethod}, " +
-                "catalogueDurationMs=${resolved.expectedDurationMs}",
-        )
-        resolved
+            cache[videoId] = CachedStream(now, resolved)
+            if (cache.size > MAX_CACHE_ENTRIES) {
+                cache.entries.minByOrNull { it.value.createdAtMs }?.let { cache.remove(it.key) }
+            }
+            System.err.println(
+                "[SquarePlayback] Stream resolved: format=${resolved.format}, " +
+                    "bitrate=${resolved.streamBitrate}, delivery=${resolved.deliveryMethod}, " +
+                    "catalogueDurationMs=${resolved.expectedDurationMs}",
+            )
+            resolved
+        }
     }
 
     private fun ensureExtractorInitialized() {
@@ -80,8 +101,15 @@ class YouTubeAudioStreamResolver {
         }
     }
 
+    private data class CachedStream(
+        val createdAtMs: Long,
+        val audio: ResolvedYouTubeAudio,
+    )
+
     companion object {
         private const val WATCH_URL = "https://www.youtube.com/watch?v="
+        private const val CACHE_TTL_MS = 45L * 60L * 1_000L
+        private const val MAX_CACHE_ENTRIES = 64
         private val INIT_LOCK = Any()
 
         @Volatile

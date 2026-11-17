@@ -784,7 +784,14 @@ fun SquareRadioPage(
 fun SquarePlayerPage(
     playbackState: PlaybackState,
     darkTheme: Boolean,
+    queuePosition: Int,
+    queueSize: Int,
+    canGoPrevious: Boolean,
+    canGoNext: Boolean,
     onPlayPause: () -> Unit,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onSeek: (Long) -> Unit,
     onStop: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -792,9 +799,12 @@ fun SquarePlayerPage(
     val position = when (playbackState) {
         is PlaybackState.Playing -> playbackState.positionMs
         is PlaybackState.Paused -> playbackState.positionMs
+        is PlaybackState.Completed -> playbackState.track.durationMs ?: 0L
         else -> 0L
     }
     val duration = track?.durationMs ?: 0L
+    var scrubProgress by remember(track?.id) { mutableStateOf<Float?>(null) }
+    val actualProgress = if (duration > 0L) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
 
     Column(
         modifier = Modifier
@@ -840,11 +850,25 @@ fun SquarePlayerPage(
             )
         }
 
+        if (queueSize > 0) {
+            Text(
+                "QUEUE · $queuePosition / $queueSize",
+                color = squareMuted(darkTheme),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.6.sp,
+            )
+        }
+
         Column(Modifier.width(560.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Slider(
-                value = if (duration > 0L) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f,
-                onValueChange = {},
-                enabled = false,
+                value = scrubProgress ?: actualProgress,
+                onValueChange = { scrubProgress = it },
+                onValueChangeFinished = {
+                    scrubProgress?.let { onSeek((it * duration).toLong()) }
+                    scrubProgress = null
+                },
+                enabled = duration > 0L && playbackState !is PlaybackState.Buffering,
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(formatTime(position), color = squareMuted(darkTheme), fontSize = 11.sp)
@@ -853,8 +877,8 @@ fun SquarePlayerPage(
         }
 
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-            IconButton(onClick = {}, enabled = false, modifier = Modifier.size(46.dp)) {
-                Icon(PhosphorIcons.Regular.CaretLeft, contentDescription = "Previous", tint = squareMuted(darkTheme))
+            IconButton(onClick = onPrevious, enabled = canGoPrevious, modifier = Modifier.size(46.dp)) {
+                Icon(PhosphorIcons.Regular.CaretLeft, contentDescription = "Previous", tint = if (canGoPrevious) squareInk(darkTheme) else squareMuted(darkTheme))
             }
             IconButton(
                 onClick = onPlayPause,
@@ -871,8 +895,8 @@ fun SquarePlayerPage(
                     modifier = Modifier.size(30.dp),
                 )
             }
-            IconButton(onClick = {}, enabled = false, modifier = Modifier.size(46.dp)) {
-                Icon(PhosphorIcons.Regular.CaretRight, contentDescription = "Next", tint = squareMuted(darkTheme))
+            IconButton(onClick = onNext, enabled = canGoNext, modifier = Modifier.size(46.dp)) {
+                Icon(PhosphorIcons.Regular.CaretRight, contentDescription = "Next", tint = if (canGoNext) squareInk(darkTheme) else squareMuted(darkTheme))
             }
         }
         if (playbackState is PlaybackState.Failed) {
@@ -1396,6 +1420,7 @@ private fun PlaybackState.trackOrNull(): MusicTrack? = when (this) {
     is PlaybackState.Buffering -> track
     is PlaybackState.Playing -> track
     is PlaybackState.Paused -> track
+    is PlaybackState.Completed -> track
     is PlaybackState.Failed -> track
     PlaybackState.Idle -> null
 }

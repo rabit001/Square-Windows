@@ -20,6 +20,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +41,7 @@ import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.GearSix
 import dev.lelonio.square.desktop.backend.youtube.YouTubeMusicSearchProvider
+import dev.lelonio.square.desktop.data.DesktopLibraryStore
 import dev.lelonio.square.desktop.model.MusicDetail
 import dev.lelonio.square.desktop.model.MusicSearchItem
 import dev.lelonio.square.desktop.model.MusicTrack
@@ -98,7 +100,10 @@ private fun SquareDesktopApp(playbackEngine: YouTubeMusicPlaybackEngine) {
     var isSearching by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var hasSearched by remember { mutableStateOf(false) }
-    var recentTracks by remember { mutableStateOf<List<MusicTrack>>(emptyList()) }
+    val libraryStore = remember { DesktopLibraryStore() }
+    var recentTracks by remember { mutableStateOf(libraryStore.loadRecentTracks()) }
+    var playQueue by remember { mutableStateOf<List<MusicTrack>>(emptyList()) }
+    var playQueueIndex by remember { mutableStateOf(-1) }
     var detail by remember { mutableStateOf<MusicDetail?>(null) }
     var isLoadingDetail by remember { mutableStateOf(false) }
     var isLoadingMoreDetail by remember { mutableStateOf(false) }
@@ -138,9 +143,41 @@ private fun SquareDesktopApp(playbackEngine: YouTubeMusicPlaybackEngine) {
         }
     }
 
-    fun playTrack(track: MusicTrack) {
-        recentTracks = (listOf(track) + recentTracks.filterNot { it.id == track.id }).take(24)
+    fun startQueueItem(index: Int) {
+        val track = playQueue.getOrNull(index) ?: return
+        playQueueIndex = index
+        recentTracks = (listOf(track) + recentTracks.filterNot { it.id == track.id }).take(100)
+        runCatching { libraryStore.saveRecentTracks(recentTracks) }
+            .onFailure { System.err.println("[SquareLibrary] Could not save history: ${it.message}") }
         scope.launch { playbackEngine.play(track) }
+    }
+
+    fun playTrack(track: MusicTrack) {
+        val contextTracks = detail?.tracks?.takeIf { tracks -> tracks.any { it.id == track.id } }
+            ?: results.filterIsInstance<MusicTrack>().takeIf { tracks -> tracks.any { it.id == track.id } }
+            ?: listOf(track)
+        playQueue = contextTracks.distinctBy { it.id }
+        val selectedIndex = playQueue.indexOfFirst { it.id == track.id }.coerceAtLeast(0)
+        startQueueItem(selectedIndex)
+    }
+
+    fun playNext() {
+        val nextIndex = playQueueIndex + 1
+        if (nextIndex in playQueue.indices) startQueueItem(nextIndex)
+    }
+
+    fun playPrevious() {
+        val position = when (val state = playbackState) {
+            is PlaybackState.Playing -> state.positionMs
+            is PlaybackState.Paused -> state.positionMs
+            is PlaybackState.Completed -> state.track.durationMs ?: 0L
+            else -> 0L
+        }
+        if (position > 3_000L) {
+            scope.launch { playbackEngine.seekTo(0L) }
+        } else if (playQueueIndex > 0) {
+            startQueueItem(playQueueIndex - 1)
+        }
     }
 
     fun openSearch(term: String? = null) {
@@ -196,6 +233,7 @@ private fun SquareDesktopApp(playbackEngine: YouTubeMusicPlaybackEngine) {
         is PlaybackState.Buffering -> state.track
         is PlaybackState.Playing -> state.track
         is PlaybackState.Paused -> state.track
+        is PlaybackState.Completed -> state.track
         is PlaybackState.Failed -> state.track
         PlaybackState.Idle -> null
     }
@@ -206,9 +244,16 @@ private fun SquareDesktopApp(playbackEngine: YouTubeMusicPlaybackEngine) {
                 is PlaybackState.Playing -> playbackEngine.pause()
                 is PlaybackState.Paused -> playbackEngine.resume()
                 is PlaybackState.Buffering -> Unit
-                is PlaybackState.Failed -> currentTrack?.let { playbackEngine.play(it) }
-                PlaybackState.Idle -> currentTrack?.let { playbackEngine.play(it) }
+                is PlaybackState.Completed -> if (playQueueIndex < playQueue.lastIndex) playNext() else currentTrack?.let { playTrack(it) }
+                is PlaybackState.Failed -> currentTrack?.let { playTrack(it) }
+                PlaybackState.Idle -> currentTrack?.let { playTrack(it) }
             }
+        }
+    }
+
+    LaunchedEffect(playbackState) {
+        if (playbackState is PlaybackState.Completed && playQueueIndex < playQueue.lastIndex) {
+            playNext()
         }
     }
 
@@ -276,6 +321,28 @@ private fun SquareDesktopApp(playbackEngine: YouTubeMusicPlaybackEngine) {
                         }
                     }
 
+                    (playbackState as? PlaybackState.Failed)?.let { failed ->
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 6.dp),
+                            color = Color(0xFF4A2028).copy(alpha = 0.92f),
+                            shape = RoundedCornerShape(14.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text("Playback failed", color = Color.White, fontSize = 12.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                    Text(failed.message, color = Color.White.copy(alpha = 0.82f), fontSize = 11.sp, maxLines = 2)
+                                }
+                                TextButton(onClick = { failed.track?.let { playTrack(it) } }) {
+                                    Text("Retry", color = Color.White)
+                                }
+                            }
+                        }
+                    }
+
                     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                         when (selectedPage) {
                             SquarePage.Home -> SquareHomePage(
@@ -328,7 +395,19 @@ private fun SquareDesktopApp(playbackEngine: YouTubeMusicPlaybackEngine) {
                                 playbackState = playbackState,
                                 darkTheme = darkTheme,
                                 onPlayPause = ::playPause,
-                                onStop = { scope.launch { playbackEngine.stop() } },
+                                onStop = {
+                                    playQueueIndex = -1
+                                    scope.launch { playbackEngine.stop() }
+                                },
+                                onPrevious = ::playPrevious,
+                                onNext = ::playNext,
+                                onSeek = { position -> scope.launch { playbackEngine.seekTo(position) } },
+                                queuePosition = if (playQueueIndex >= 0) playQueueIndex + 1 else 0,
+                                queueSize = playQueue.size,
+                                canGoPrevious = playQueueIndex > 0 || (
+                                    (playbackState as? PlaybackState.Playing)?.positionMs ?: 0L
+                                ) > 3_000L,
+                                canGoNext = playQueueIndex >= 0 && playQueueIndex < playQueue.lastIndex,
                                 onBack = { selectedPage = SquarePage.Home },
                             )
                             SquarePage.Settings -> SquareSettingsPage(
