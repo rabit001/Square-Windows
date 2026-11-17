@@ -255,7 +255,7 @@ class YouTubeAudioStreamResolver(
                     "contentType=${resolved.responseContentType}, stream=${resolved.streamId}, " +
                     "bitrate=${resolved.streamBitrate}, delivery=${resolved.deliveryMethod}",
             )
-            resolved
+            return resolved
         } catch (error: Exception) {
             tempFile.delete()
             throw error
