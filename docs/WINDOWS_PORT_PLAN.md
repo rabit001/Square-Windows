@@ -49,7 +49,7 @@ The development machine has 8 GB RAM. The separate desktop Gradle build is confi
 
 ## Licensing and attribution
 
-Preserve the upstream GPL-3.0-or-later licence and notices. Audit every dependency before bundling it. In particular, the upstream repository identifies its lyrics view as AGPL-3.0 and documents additional third-party components and service terms. Keep required source notices and corresponding source available when distributing a covered binary. This project is an unofficial community port and is not affiliated with Spotify or Google. InnerTube search uses an undocumented interface and may change or become unavailable; this is not an official YouTube API integration.
+Preserve the upstream GPL-3.0-or-later licence and notices. Audit every dependency before bundling it. In particular, the upstream repository identifies its lyrics view as AGPL-3.0 and documents additional third-party components and service terms. Keep required source notices and corresponding source available when distributing a covered binary. This project is an unofficial community port and is not affiliated with Spotify or Google. InnerTube search and extracted stream URLs use undocumented provider interfaces and may change or become unavailable. This is not an official YouTube API integration.
 
 ## Status
 
@@ -59,7 +59,9 @@ Preserve the upstream GPL-3.0-or-later licence and notices. Audit every dependen
 - [x] Generated the Windows installer package on Windows
 - [x] Added an Android-independent desktop provider and playback contract
 - [x] Added anonymous YouTube Music song-search adapter using the vendored InnerTube client
-- [ ] Run the YouTube search integration on Windows and verify live responses
+- [x] Added a Windows AAC/MP3 audio playback spike using JavaFX Media and NewPipeExtractor
+- [ ] Run the audio playback spike on Windows and verify real track playback
 - [ ] Establish baseline memory measurements
-- [ ] Implement YouTube Music stream resolution and desktop playback
+- [ ] Implement reliable YouTube Music stream handling, queue and media controls
+- [ ] Implement YouTube Music account/library support where permitted
 - [ ] Implement Spotify Windows playback spike
