@@ -40,6 +40,7 @@ import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.GearSix
 import dev.lelonio.square.desktop.backend.youtube.YouTubeMusicSearchProvider
+import dev.lelonio.square.desktop.model.MusicSearchItem
 import dev.lelonio.square.desktop.model.MusicTrack
 import dev.lelonio.square.desktop.playback.PlaybackState
 import dev.lelonio.square.desktop.playback.YouTubeMusicPlaybackEngine
@@ -48,7 +49,6 @@ import dev.lelonio.square.desktop.ui.SquareDesktopTheme
 import dev.lelonio.square.desktop.ui.SquareHomePage
 import dev.lelonio.square.desktop.ui.SquareLibraryPage
 import dev.lelonio.square.desktop.ui.SquareNewPage
-import dev.lelonio.square.desktop.ui.SquarePageHeader
 import dev.lelonio.square.desktop.ui.SquarePlayerPage
 import dev.lelonio.square.desktop.ui.SquareRadioPage
 import dev.lelonio.square.desktop.ui.SquareSearchPage
@@ -90,7 +90,7 @@ private fun SquareDesktopApp(playbackEngine: YouTubeMusicPlaybackEngine) {
     val scope = rememberCoroutineScope()
 
     var query by remember { mutableStateOf("") }
-    var results by remember { mutableStateOf<List<MusicTrack>>(emptyList()) }
+    var results by remember { mutableStateOf<List<MusicSearchItem>>(emptyList()) }
     var nextPageToken by remember { mutableStateOf<String?>(null) }
     var isSearching by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -114,8 +114,12 @@ private fun SquareDesktopApp(playbackEngine: YouTubeMusicPlaybackEngine) {
                     query = trimmed,
                     pageToken = if (append) nextPageToken else null,
                 )
-                val tracks = page.items.filterIsInstance<MusicTrack>()
-                results = if (append) results + tracks else tracks
+                if (append) {
+                    val existing = results.mapTo(mutableSetOf()) { "${it::class.qualifiedName}:${it.id}" }
+                    results = results + page.items.filterNot { "${it::class.qualifiedName}:${it.id}" in existing }
+                } else {
+                    results = page.items
+                }
                 nextPageToken = page.nextPageToken
             } catch (cancelled: CancellationException) {
                 throw cancelled
