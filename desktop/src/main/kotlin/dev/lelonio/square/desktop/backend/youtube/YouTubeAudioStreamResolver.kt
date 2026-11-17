@@ -88,7 +88,7 @@ class YouTubeAudioStreamResolver(
                 .header("Accept", "*/*")
                 .build()
 
-            httpClient.newCall(request).execute().use { response ->
+            return httpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     throw IOException(
                         "YouTube audio request failed with HTTP ${response.code}.",
