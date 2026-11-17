@@ -45,7 +45,7 @@ Run desktop unit tests:
 - Anonymous YouTube Music song-catalogue search using the vendored InnerTube client.
 - A first audio playback spike that resolves an item through NewPipeExtractor and plays AAC/M4A or MP3 through JavaFX Media on Windows.
 
-The live playback path still needs to be tested on Windows. It uses undocumented YouTube interfaces and may stop working when the provider changes them. It does not provide Google account sign-in, the YouTube Music library, paid/account-only content, or a guarantee of service availability. Spotify authentication and playback are not connected yet.
+The playback spike downloads the selected public audio stream in bounded chunks to a temporary `.m4a` or `.mp3` file, then opens that local file with JavaFX Media. This avoids a mismatch between NewPipe's `audio/mp4` MIME label and JavaFX's documented M4A file recognition. The local file is deleted when playback is stopped, replaced or the player is closed. Real playback still needs Windows verification. This uses undocumented YouTube interfaces and may stop working when the provider changes them. It does not provide Google account sign-in, the YouTube Music library, paid/account-only content, or a guarantee of service availability. Spotify authentication and playback are not connected yet.
 
 ## Desktop backend boundary
 
