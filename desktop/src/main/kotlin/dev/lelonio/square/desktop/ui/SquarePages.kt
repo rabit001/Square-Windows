@@ -69,6 +69,7 @@ import com.adamglin.phosphoricons.regular.House
 import com.adamglin.phosphoricons.regular.SquaresFour
 import dev.lelonio.square.desktop.model.MusicAlbum
 import dev.lelonio.square.desktop.model.MusicArtist
+import dev.lelonio.square.desktop.model.MusicDetail
 import dev.lelonio.square.desktop.model.MusicPlaylist
 import dev.lelonio.square.desktop.model.MusicSearchItem
 import dev.lelonio.square.desktop.model.MusicTrack
@@ -221,6 +222,7 @@ fun SquareSearchPage(
     onSearch: () -> Unit,
     onLoadMore: () -> Unit,
     onPlay: (MusicTrack) -> Unit,
+    onOpen: (MusicSearchItem) -> Unit,
 ) {
     var selectedFilter by remember(query) { mutableStateOf(SearchFilter.ALL) }
     val visibleResults = results.filter { it.matches(selectedFilter) }
@@ -347,6 +349,7 @@ fun SquareSearchPage(
                                         index = index + 1,
                                         isArtist = true,
                                         darkTheme = darkTheme,
+                                        onClick = { onOpen(item) },
                                     )
                                     is MusicAlbum -> SearchEntityRow(
                                         title = item.title,
@@ -357,6 +360,7 @@ fun SquareSearchPage(
                                         artworkUrl = item.artworkUrl,
                                         index = index + 1,
                                         darkTheme = darkTheme,
+                                        onClick = { onOpen(item) },
                                     )
                                     is MusicPlaylist -> SearchEntityRow(
                                         title = item.title,
@@ -368,6 +372,7 @@ fun SquareSearchPage(
                                         artworkUrl = item.artworkUrl,
                                         index = index + 1,
                                         darkTheme = darkTheme,
+                                        onClick = { onOpen(item) },
                                     )
                                 }
                             }
@@ -397,11 +402,13 @@ private fun SearchEntityRow(
     index: Int,
     darkTheme: Boolean,
     isArtist: Boolean = false,
+    onClick: (() -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(15.dp))
+            .clickable(enabled = onClick != null) { onClick?.invoke() }
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -433,6 +440,199 @@ private fun SearchEntityRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+        }
+    }
+}
+
+
+@Composable
+fun SquareDetailPage(
+    detail: MusicDetail?,
+    isLoading: Boolean,
+    errorMessage: String?,
+    isLoadingMore: Boolean,
+    darkTheme: Boolean,
+    onBack: () -> Unit,
+    onPlay: (MusicTrack) -> Unit,
+    onOpen: (MusicSearchItem) -> Unit,
+    onLoadMore: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 46.dp, vertical = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(22.dp),
+    ) {
+        TextButton(onClick = onBack) {
+            Icon(PhosphorIcons.Regular.ArrowLeft, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("Back to search")
+        }
+
+        when {
+            isLoading && detail == null -> {
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 60.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(12.dp))
+                    Text("Opening catalogue page…", color = squareMuted(darkTheme))
+                }
+            }
+
+            detail == null -> {
+                StatusCard(
+                    message = errorMessage ?: "This catalogue page could not be opened.",
+                    darkTheme = darkTheme,
+                )
+            }
+
+            else -> {
+                val eyebrow = when (val item = detail.item) {
+                    is MusicArtist -> "Artist"
+                    is MusicAlbum -> "Album"
+                    is MusicPlaylist -> if (item.isPodcast) "Podcast" else "Playlist"
+                    is MusicTrack -> "Track"
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                ) {
+                    SquareArtwork(
+                        detail.item.artworkUrl,
+                        modifier = Modifier.size(190.dp),
+                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            eyebrow.uppercase(Locale.ROOT),
+                            color = squareMuted(darkTheme),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 2.sp,
+                        )
+                        Text(
+                            detail.item.title,
+                            color = squareInk(darkTheme),
+                            style = MaterialTheme.typography.displayMedium,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        detail.subtitle?.takeIf { it.isNotBlank() }?.let {
+                            Text(it, color = squareMuted(darkTheme), fontSize = 13.sp)
+                        }
+                    }
+                }
+
+                detail.description?.takeIf { it.isNotBlank() }?.let {
+                    Text(
+                        it,
+                        color = squareMuted(darkTheme),
+                        fontSize = 13.sp,
+                        lineHeight = 20.sp,
+                    )
+                }
+
+                if (detail.tracks.isNotEmpty()) {
+                    SectionHeading(
+                        title = if (detail.item is MusicAlbum) "Songs" else "Tracks",
+                        action = "${detail.tracks.size}",
+                        onAction = null,
+                        darkTheme = darkTheme,
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        detail.tracks.forEachIndexed { index, track ->
+                            SquareTrackRow(
+                                track = track,
+                                index = index + 1,
+                                darkTheme = darkTheme,
+                                onPlay = { onPlay(track) },
+                            )
+                        }
+                    }
+                }
+
+                detail.shelves.forEach { shelf ->
+                    if (shelf.items.isNotEmpty()) {
+                        SectionHeading(
+                            title = shelf.title,
+                            action = "${shelf.items.size}",
+                            onAction = null,
+                            darkTheme = darkTheme,
+                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            shelf.items.forEachIndexed { index, item ->
+                                when (item) {
+                                    is MusicTrack -> SquareTrackRow(
+                                        track = item,
+                                        index = index + 1,
+                                        darkTheme = darkTheme,
+                                        onPlay = { onPlay(item) },
+                                    )
+                                    is MusicArtist -> SearchEntityRow(
+                                        title = item.title,
+                                        subtitle = "Artist",
+                                        artworkUrl = item.artworkUrl,
+                                        index = index + 1,
+                                        darkTheme = darkTheme,
+                                        isArtist = true,
+                                        onClick = { onOpen(item) },
+                                    )
+                                    is MusicAlbum -> SearchEntityRow(
+                                        title = item.title,
+                                        subtitle = listOfNotNull(
+                                            item.artists.joinToString(", ").takeIf { it.isNotBlank() },
+                                            item.year?.toString(),
+                                        ).joinToString(" · ").ifBlank { "Album" },
+                                        artworkUrl = item.artworkUrl,
+                                        index = index + 1,
+                                        darkTheme = darkTheme,
+                                        onClick = { onOpen(item) },
+                                    )
+                                    is MusicPlaylist -> SearchEntityRow(
+                                        title = item.title,
+                                        subtitle = listOfNotNull(
+                                            if (item.isPodcast) "Podcast" else "Playlist",
+                                            item.ownerName?.takeIf { it.isNotBlank() },
+                                            item.itemCount?.let { "$it items" },
+                                        ).joinToString(" · "),
+                                        artworkUrl = item.artworkUrl,
+                                        index = index + 1,
+                                        darkTheme = darkTheme,
+                                        onClick = { onOpen(item) },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                errorMessage?.takeIf { it.isNotBlank() }?.let {
+                    StatusCard(message = it, darkTheme = darkTheme)
+                }
+
+                if (!detail.nextPageToken.isNullOrBlank()) {
+                    Button(
+                        onClick = onLoadMore,
+                        enabled = !isLoadingMore,
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                        shape = RoundedCornerShape(16.dp),
+                    ) {
+                        if (isLoadingMore) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Text(if (isLoadingMore) "Loading tracks…" else "Load more tracks")
+                    }
+                }
+            }
         }
     }
 }

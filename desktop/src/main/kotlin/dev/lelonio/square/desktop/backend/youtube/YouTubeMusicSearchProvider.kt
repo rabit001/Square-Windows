@@ -14,6 +14,8 @@ import dev.lelonio.square.desktop.backend.MusicProvider
 import dev.lelonio.square.desktop.backend.ProviderAuthState
 import dev.lelonio.square.desktop.model.MusicAlbum
 import dev.lelonio.square.desktop.model.MusicArtist
+import dev.lelonio.square.desktop.model.MusicDetail
+import dev.lelonio.square.desktop.model.MusicDetailShelf
 import dev.lelonio.square.desktop.model.MusicPlaylist
 import dev.lelonio.square.desktop.model.MusicProviderId
 import dev.lelonio.square.desktop.model.MusicSearchItem
@@ -127,8 +129,9 @@ class YouTubeMusicSearchProvider(
             }
 
             val items = successful
-                .flatMap { (_, result) -> result.items }
-                .mapNotNull(YTItem::toDesktopSearchItem)
+                .flatMap { (bucket, result) ->
+                    result.items.mapNotNull { item -> item.toDesktopSearchItem(bucket) }
+                }
                 .distinctBy { "${it::class.qualifiedName}:${it.id}" }
 
             val nextTokens = successful.mapNotNull { (key, result) ->
@@ -143,6 +146,122 @@ class YouTubeMusicSearchProvider(
             )
         }
     }
+
+
+    override suspend fun browse(item: MusicSearchItem): MusicDetail =
+        withContext(Dispatchers.IO) {
+            when (item) {
+                is MusicArtist -> {
+                    // Library-followed artist IDs use an MPLA prefix; public
+                    // artist pages are addressed by their channel/browse ID.
+                    val artistId = item.id.removePrefix("MPLA")
+                    val page = YouTube.artist(artistId).getOrThrow()
+                    val topSongsSection = page.sections.firstOrNull { section ->
+                        section.items.isNotEmpty() && section.items.all { it is SongItem }
+                    }
+                    val shelves = page.sections
+                        .filterNot { it === topSongsSection }
+                        .mapNotNull { section ->
+                            val shelfItems = section.items.mapNotNull { source ->
+                                if (source is SongItem) {
+                                    source.toDesktopMusicTrack(MusicTrackKind.VIDEO)
+                                } else {
+                                    source.toDesktopSearchItem()
+                                }
+                            }
+                            shelfItems.takeIf { it.isNotEmpty() }?.let { items ->
+                                MusicDetailShelf(
+                                    title = section.title.ifBlank { "More from ${page.artist.title}" },
+                                    items = items,
+                                )
+                            }
+                        }
+                    val artist = item.copy(
+                        title = page.artist.title,
+                        artworkUrl = page.artist.thumbnail ?: item.artworkUrl,
+                        providerUri = page.artist.shareLink,
+                    )
+                    val audience = listOfNotNull(
+                        page.monthlyListenerCount?.takeIf { it.isNotBlank() },
+                        page.subscriberCountText?.takeIf { it.isNotBlank() },
+                    ).joinToString(" · ").ifBlank { null }
+
+                    MusicDetail(
+                        item = artist,
+                        subtitle = audience,
+                        description = page.description?.takeIf { it.isNotBlank() },
+                        tracks = topSongsSection?.items
+                            .orEmpty()
+                            .filterIsInstance<SongItem>()
+                            .map { it.toDesktopMusicTrack() },
+                        shelves = shelves,
+                    )
+                }
+
+                is MusicAlbum -> {
+                    val page = YouTube.album(item.id).getOrThrow()
+                    val album = page.album.toDesktopSearchItem() as? MusicAlbum ?: item
+                    val subtitle = listOfNotNull(
+                        album.artists.joinToString(", ").takeIf { it.isNotBlank() },
+                        album.year?.toString(),
+                    ).joinToString(" · ").ifBlank { "Album" }
+                    val otherVersions = page.otherVersions.mapNotNull { it.toDesktopSearchItem() }
+
+                    MusicDetail(
+                        item = album,
+                        subtitle = subtitle,
+                        tracks = page.songs.map { it.toDesktopMusicTrack() },
+                        shelves = otherVersions.takeIf { it.isNotEmpty() }
+                            ?.let { listOf(MusicDetailShelf("Other versions", it)) }
+                            .orEmpty(),
+                    )
+                }
+
+                is MusicPlaylist -> {
+                    val page = YouTube.playlist(item.id).getOrThrow()
+                    val playlist = item.copy(
+                        title = page.playlist.title,
+                        ownerName = page.playlist.author?.name ?: item.ownerName,
+                        itemCount = page.playlist.songCountText.toItemCount() ?: item.itemCount,
+                        artworkUrl = page.playlist.thumbnail ?: item.artworkUrl,
+                        isPodcast = item.isPodcast || page.playlist.isPodcast,
+                    )
+                    val subtitle = listOfNotNull(
+                        if (playlist.isPodcast) "Podcast" else "Playlist",
+                        playlist.ownerName?.takeIf { it.isNotBlank() },
+                        page.playlist.songCountText?.takeIf { it.isNotBlank() },
+                    ).joinToString(" · ")
+
+                    MusicDetail(
+                        item = playlist,
+                        subtitle = subtitle,
+                        description = page.playlist.description?.takeIf { it.isNotBlank() },
+                        tracks = page.songs.map { it.toDesktopMusicTrack() },
+                        nextPageToken = page.songsContinuation ?: page.continuation,
+                    )
+                }
+
+                else -> throw IllegalArgumentException("This result does not have a browsable detail page.")
+            }
+        }
+
+    override suspend fun browseMore(detail: MusicDetail): MusicDetail =
+        withContext(Dispatchers.IO) {
+            val continuation = detail.nextPageToken
+                ?: return@withContext detail.copy(tracks = emptyList(), shelves = emptyList(), nextPageToken = null)
+            require(detail.item is MusicPlaylist) {
+                "Only playlist and podcast pages support track continuation."
+            }
+
+            val page = YouTube.playlistContinuation(continuation).getOrThrow()
+            MusicDetail(
+                item = detail.item,
+                subtitle = detail.subtitle,
+                description = detail.description,
+                tracks = page.songs.map { it.toDesktopMusicTrack() },
+                nextPageToken = page.continuation,
+            )
+        }
 
     private fun decodeContinuation(token: String): SearchContinuation {
         require(token.length <= MAX_CONTINUATION_LENGTH) { "Search continuation is too large." }
@@ -187,8 +306,12 @@ private data class SearchContinuation(
 )
 
 /** Map every result type used by Square's Android search backend. */
-internal fun YTItem.toDesktopSearchItem(): MusicSearchItem? = when (this) {
-    is SongItem -> toDesktopMusicTrack(MusicTrackKind.SONG)
+internal fun YTItem.toDesktopSearchItem(bucket: String? = null): MusicSearchItem? = when (this) {
+    is SongItem -> when (bucket) {
+        "videos" -> toDesktopMusicTrack(MusicTrackKind.VIDEO)
+        "episodes" -> toDesktopMusicTrack(MusicTrackKind.EPISODE)
+        else -> toDesktopMusicTrack()
+    }
     is AlbumItem -> MusicAlbum(
         id = browseId,
         title = title,
@@ -236,7 +359,11 @@ internal fun YTItem.toDesktopSearchItem(): MusicSearchItem? = when (this) {
 
 /** Convert an InnerTube song/video to the provider-neutral playable model. */
 internal fun SongItem.toDesktopMusicTrack(
-    kind: MusicTrackKind = if (isVideoSong) MusicTrackKind.VIDEO else MusicTrackKind.SONG,
+    kind: MusicTrackKind = when {
+        isEpisode -> MusicTrackKind.EPISODE
+        isVideoSong -> MusicTrackKind.VIDEO
+        else -> MusicTrackKind.SONG
+    },
 ): MusicTrack = MusicTrack(
     id = id,
     title = title,

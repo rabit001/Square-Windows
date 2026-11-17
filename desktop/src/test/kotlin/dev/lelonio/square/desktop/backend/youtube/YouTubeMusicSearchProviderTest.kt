@@ -96,6 +96,22 @@ class YouTubeMusicSearchProviderTest {
     }
 
     @Test
+    fun mapsVideoSearchBucketEvenWhenVideoMetadataIsMissing() {
+        val source = SongItem(
+            id = "bucket-video",
+            title = "Video without a music video type",
+            artists = emptyList(),
+            thumbnail = "https://example.test/video.jpg",
+        )
+
+        val video = source.toDesktopSearchItem("videos") as dev.lelonio.square.desktop.model.MusicTrack
+        val song = source.toDesktopSearchItem("songs") as dev.lelonio.square.desktop.model.MusicTrack
+
+        assertEquals(MusicTrackKind.VIDEO, video.kind)
+        assertEquals(MusicTrackKind.SONG, song.kind)
+    }
+
+    @Test
     fun mapsMusicVideosAsVideoTracks() {
         val source = SongItem(
             id = "video789",

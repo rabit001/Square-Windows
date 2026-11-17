@@ -40,12 +40,14 @@ import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.GearSix
 import dev.lelonio.square.desktop.backend.youtube.YouTubeMusicSearchProvider
+import dev.lelonio.square.desktop.model.MusicDetail
 import dev.lelonio.square.desktop.model.MusicSearchItem
 import dev.lelonio.square.desktop.model.MusicTrack
 import dev.lelonio.square.desktop.playback.PlaybackState
 import dev.lelonio.square.desktop.playback.YouTubeMusicPlaybackEngine
 import dev.lelonio.square.desktop.ui.SquareBottomDock
 import dev.lelonio.square.desktop.ui.SquareDesktopTheme
+import dev.lelonio.square.desktop.ui.SquareDetailPage
 import dev.lelonio.square.desktop.ui.SquareHomePage
 import dev.lelonio.square.desktop.ui.SquareLibraryPage
 import dev.lelonio.square.desktop.ui.SquareNewPage
@@ -76,6 +78,7 @@ enum class SquarePage {
     Radio,
     Library,
     Search,
+    Detail,
     Player,
     Settings,
 }
@@ -96,6 +99,10 @@ private fun SquareDesktopApp(playbackEngine: YouTubeMusicPlaybackEngine) {
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var hasSearched by remember { mutableStateOf(false) }
     var recentTracks by remember { mutableStateOf<List<MusicTrack>>(emptyList()) }
+    var detail by remember { mutableStateOf<MusicDetail?>(null) }
+    var isLoadingDetail by remember { mutableStateOf(false) }
+    var isLoadingMoreDetail by remember { mutableStateOf(false) }
+    var detailError by remember { mutableStateOf<String?>(null) }
 
     fun searchMusic(searchQuery: String = query, append: Boolean = false) {
         val trimmed = searchQuery.trim()
@@ -141,6 +148,47 @@ private fun SquareDesktopApp(playbackEngine: YouTubeMusicPlaybackEngine) {
         if (!term.isNullOrBlank()) {
             query = term
             searchMusic(term)
+        }
+    }
+
+    fun openDetail(item: MusicSearchItem) {
+        selectedPage = SquarePage.Detail
+        detail = null
+        detailError = null
+        isLoadingDetail = true
+        scope.launch {
+            try {
+                detail = provider.browse(item)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                detailError = error.message ?: "Could not open this catalogue page."
+            } finally {
+                isLoadingDetail = false
+            }
+        }
+    }
+
+    fun loadMoreDetail() {
+        val current = detail ?: return
+        if (current.nextPageToken.isNullOrBlank() || isLoadingMoreDetail) return
+        scope.launch {
+            isLoadingMoreDetail = true
+            detailError = null
+            try {
+                val next = provider.browseMore(current)
+                detail = current.copy(
+                    tracks = current.tracks + next.tracks,
+                    shelves = current.shelves + next.shelves,
+                    nextPageToken = next.nextPageToken,
+                )
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                detailError = error.message ?: "Could not load more tracks."
+            } finally {
+                isLoadingMoreDetail = false
+            }
         }
     }
 
@@ -263,6 +311,18 @@ private fun SquareDesktopApp(playbackEngine: YouTubeMusicPlaybackEngine) {
                                 onSearch = { searchMusic() },
                                 onLoadMore = { searchMusic(append = true) },
                                 onPlay = ::playTrack,
+                                onOpen = ::openDetail,
+                            )
+                            SquarePage.Detail -> SquareDetailPage(
+                                detail = detail,
+                                isLoading = isLoadingDetail,
+                                errorMessage = detailError,
+                                isLoadingMore = isLoadingMoreDetail,
+                                darkTheme = darkTheme,
+                                onBack = { selectedPage = SquarePage.Search },
+                                onPlay = ::playTrack,
+                                onOpen = ::openDetail,
+                                onLoadMore = ::loadMoreDetail,
                             )
                             SquarePage.Player -> SquarePlayerPage(
                                 playbackState = playbackState,

@@ -1,6 +1,8 @@
 package dev.lelonio.square.desktop.backend
 
+import dev.lelonio.square.desktop.model.MusicDetail
 import dev.lelonio.square.desktop.model.MusicProviderId
+import dev.lelonio.square.desktop.model.MusicSearchItem
 import dev.lelonio.square.desktop.model.MusicSearchPage
 import kotlinx.coroutines.flow.StateFlow
 
@@ -28,4 +30,10 @@ interface MusicProvider {
 
     /** [pageToken] is opaque and must only be interpreted by its provider. */
     suspend fun search(query: String, pageToken: String? = null): MusicSearchPage
+
+    /** Open a catalogue result using the provider's native browse endpoint. */
+    suspend fun browse(item: MusicSearchItem): MusicDetail
+
+    /** Fetch the next page of a browsable result, if its provider exposes one. */
+    suspend fun browseMore(detail: MusicDetail): MusicDetail
 }
