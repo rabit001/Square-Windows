@@ -46,6 +46,20 @@ class YouTubeAudioStreamSelectorTest {
         assertNull(selected)
     }
 
+
+    @Test
+    fun usesM4aAndMp3FileExtensionsForJavaFxDetection() {
+        assertEquals(".m4a", audioFileSuffix(MediaFormat.M4A))
+        assertEquals(".mp3", audioFileSuffix(MediaFormat.MP3))
+    }
+
+    @Test
+    fun rejectsUnsupportedDesktopAudioFileFormats() {
+        kotlin.test.assertFailsWith<IllegalArgumentException> {
+            audioFileSuffix(MediaFormat.OPUS)
+        }
+    }
+
     private fun stream(
         id: String,
         format: MediaFormat,
