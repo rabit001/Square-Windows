@@ -13,6 +13,7 @@ import kotlin.coroutines.resumeWithException
  */
 internal object JavaFxMediaRuntime {
     private val started = CompletableDeferred<Unit>()
+    @Volatile private var startupFailed = false
 
     init {
         try {
@@ -23,6 +24,7 @@ internal object JavaFxMediaRuntime {
         } catch (alreadyStarted: IllegalStateException) {
             started.complete(Unit)
         } catch (error: Throwable) {
+            startupFailed = true
             started.completeExceptionally(error)
         }
     }
@@ -44,7 +46,7 @@ internal object JavaFxMediaRuntime {
     }
 
     fun shutdown(cleanup: () -> Unit) {
-        if (!started.isCompleted || started.isCancelled || started.isCompletedExceptionally) return
+        if (!started.isCompleted || started.isCancelled || startupFailed) return
 
         Platform.runLater {
             try {
