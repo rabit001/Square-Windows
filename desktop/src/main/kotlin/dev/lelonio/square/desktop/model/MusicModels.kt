@@ -6,6 +6,13 @@ enum class MusicProviderId(val displayName: String) {
     YOUTUBE_MUSIC("YouTube Music"),
 }
 
+/** The role a playable result has in a music catalogue. */
+enum class MusicTrackKind {
+    SONG,
+    VIDEO,
+    EPISODE,
+}
+
 /**
  * A provider-neutral search result.
  *
@@ -27,6 +34,8 @@ data class MusicTrack(
     val durationMs: Long? = null,
     override val artworkUrl: String? = null,
     override val providerUri: String = id,
+    val kind: MusicTrackKind = MusicTrackKind.SONG,
+    val explicit: Boolean = false,
 ) : MusicSearchItem {
     init {
         require(id.isNotBlank()) { "Track id must not be blank" }
@@ -40,6 +49,7 @@ data class MusicArtist(
     override val title: String,
     override val artworkUrl: String? = null,
     override val providerUri: String = id,
+    val isProfile: Boolean = false,
 ) : MusicSearchItem {
     init {
         require(id.isNotBlank()) { "Artist id must not be blank" }
@@ -52,6 +62,7 @@ data class MusicAlbum(
     override val title: String,
     val artists: List<String>,
     val trackCount: Int? = null,
+    val year: Int? = null,
     override val artworkUrl: String? = null,
     override val providerUri: String = id,
 ) : MusicSearchItem {
@@ -69,6 +80,7 @@ data class MusicPlaylist(
     val itemCount: Int? = null,
     override val artworkUrl: String? = null,
     override val providerUri: String = id,
+    val isPodcast: Boolean = false,
 ) : MusicSearchItem {
     init {
         require(id.isNotBlank()) { "Playlist id must not be blank" }
