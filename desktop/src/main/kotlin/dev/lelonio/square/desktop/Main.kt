@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -37,6 +38,7 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
+import com.adamglin.phosphoricons.regular.GearSix
 import dev.lelonio.square.desktop.backend.youtube.YouTubeMusicSearchProvider
 import dev.lelonio.square.desktop.model.MusicTrack
 import dev.lelonio.square.desktop.playback.PlaybackState
@@ -46,7 +48,6 @@ import dev.lelonio.square.desktop.ui.SquareDesktopTheme
 import dev.lelonio.square.desktop.ui.SquareHomePage
 import dev.lelonio.square.desktop.ui.SquareLibraryPage
 import dev.lelonio.square.desktop.ui.SquareNewPage
-import dev.lelonio.square.desktop.ui.SquarePage
 import dev.lelonio.square.desktop.ui.SquarePageHeader
 import dev.lelonio.square.desktop.ui.SquarePlayerPage
 import dev.lelonio.square.desktop.ui.SquareRadioPage
