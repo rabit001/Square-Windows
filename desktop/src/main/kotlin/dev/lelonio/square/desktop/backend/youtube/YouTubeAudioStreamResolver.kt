@@ -53,32 +53,33 @@ class YouTubeAudioStreamResolver {
                     return@withContext it.audio.copy(expectedDurationMs = track.durationMs)
                 }
             }
+
             cache.remove(videoId)
             ensureExtractorInitialized()
 
-        val encodedId = URLEncoder.encode(videoId, StandardCharsets.UTF_8.name())
-        val info = StreamInfo.getInfo(
-            ServiceList.YouTube,
-            "$WATCH_URL$encodedId",
-        )
-
-        val stream = selectJavaFxCompatibleAudioStream(info.audioStreams)
-            ?: throw IllegalStateException(
-                "No progressive AAC/M4A or MP3 audio stream is available for this track.",
+            val encodedId = URLEncoder.encode(videoId, StandardCharsets.UTF_8.name())
+            val info = StreamInfo.getInfo(
+                ServiceList.YouTube,
+                "$WATCH_URL$encodedId",
             )
 
-        val format = stream.format
-            ?: throw IllegalStateException("YouTube did not report an audio format.")
+            val stream = selectJavaFxCompatibleAudioStream(info.audioStreams)
+                ?: throw IllegalStateException(
+                    "No progressive AAC/M4A or MP3 audio stream is available for this track.",
+                )
 
-        val resolved = ResolvedYouTubeAudio(
-            streamUrl = stream.content,
-            format = format,
-            contentType = audioContentType(format),
-            streamId = stream.id,
-            streamBitrate = stream.averageBitrate,
-            deliveryMethod = stream.deliveryMethod.name,
-            expectedDurationMs = track.durationMs,
-        )
+            val format = stream.format
+                ?: throw IllegalStateException("YouTube did not report an audio format.")
+
+            val resolved = ResolvedYouTubeAudio(
+                streamUrl = stream.content,
+                format = format,
+                contentType = audioContentType(format),
+                streamId = stream.id,
+                streamBitrate = stream.averageBitrate,
+                deliveryMethod = stream.deliveryMethod.name,
+                expectedDurationMs = track.durationMs,
+            )
 
             cache[videoId] = CachedStream(now, resolved)
             if (cache.size > MAX_CACHE_ENTRIES) {

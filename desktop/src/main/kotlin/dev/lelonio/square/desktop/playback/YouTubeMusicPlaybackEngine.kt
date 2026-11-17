@@ -181,8 +181,6 @@ class YouTubeMusicPlaybackEngine(
 
     private fun scheduleRetryOrFail(track: MusicTrack, requestId: Long, message: String) {
         if (requestId != playRequestGeneration.get()) return
-        if (activeTrack?.id != null && activeTrack?.id != track.id) return
-
         val attempt = retryAttempts.merge(track.id, 1, Int::plus) ?: 1
         disposeCurrentPlayer()
 

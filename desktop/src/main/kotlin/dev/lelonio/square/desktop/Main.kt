@@ -153,7 +153,12 @@ private fun SquareDesktopApp(playbackEngine: YouTubeMusicPlaybackEngine) {
     }
 
     fun playTrack(track: MusicTrack) {
-        val contextTracks = detail?.tracks?.takeIf { tracks -> tracks.any { it.id == track.id } }
+        val detailTracks = detail?.let { current ->
+            (current.tracks + current.shelves.flatMap { shelf -> shelf.items.filterIsInstance<MusicTrack>() })
+                .distinctBy { it.id }
+                .takeIf { tracks -> tracks.any { it.id == track.id } }
+        }
+        val contextTracks = detailTracks
             ?: results.filterIsInstance<MusicTrack>().takeIf { tracks -> tracks.any { it.id == track.id } }
             ?: listOf(track)
         playQueue = contextTracks.distinctBy { it.id }
@@ -404,10 +409,16 @@ private fun SquareDesktopApp(playbackEngine: YouTubeMusicPlaybackEngine) {
                                 onSeek = { position -> scope.launch { playbackEngine.seekTo(position) } },
                                 queuePosition = if (playQueueIndex >= 0) playQueueIndex + 1 else 0,
                                 queueSize = playQueue.size,
-                                canGoPrevious = playQueueIndex > 0 || (
-                                    (playbackState as? PlaybackState.Playing)?.positionMs ?: 0L
-                                ) > 3_000L,
+                                canGoPrevious = playQueueIndex > 0 || when (val state = playbackState) {
+                                    is PlaybackState.Playing -> state.positionMs > 3_000L
+                                    is PlaybackState.Paused -> state.positionMs > 3_000L
+                                    is PlaybackState.Completed -> true
+                                    else -> false
+                                },
                                 canGoNext = playQueueIndex >= 0 && playQueueIndex < playQueue.lastIndex,
+                                queueTracks = playQueue,
+                                queueIndex = playQueueIndex,
+                                onPlayQueueTrack = ::startQueueItem,
                                 onBack = { selectedPage = SquarePage.Home },
                             )
                             SquarePage.Settings -> SquareSettingsPage(

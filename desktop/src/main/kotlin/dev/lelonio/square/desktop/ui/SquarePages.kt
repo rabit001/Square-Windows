@@ -788,6 +788,9 @@ fun SquarePlayerPage(
     queueSize: Int,
     canGoPrevious: Boolean,
     canGoNext: Boolean,
+    queueTracks: List<MusicTrack>,
+    queueIndex: Int,
+    onPlayQueueTrack: (Int) -> Unit,
     onPlayPause: () -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
@@ -899,6 +902,30 @@ fun SquarePlayerPage(
                 Icon(PhosphorIcons.Regular.CaretRight, contentDescription = "Next", tint = if (canGoNext) squareInk(darkTheme) else squareMuted(darkTheme))
             }
         }
+        if (queueTracks.size > 1 && queueIndex in queueTracks.indices && queueIndex < queueTracks.lastIndex) {
+            Column(
+                modifier = Modifier.width(560.dp).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                SectionHeading(
+                    title = "Up next",
+                    action = "${queueTracks.size - queueIndex - 1} tracks",
+                    onAction = null,
+                    darkTheme = darkTheme,
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    queueTracks.drop(queueIndex + 1).take(8).forEachIndexed { index, queuedTrack ->
+                        SquareTrackRow(
+                            track = queuedTrack,
+                            index = queueIndex + index + 2,
+                            darkTheme = darkTheme,
+                            onPlay = { onPlayQueueTrack(queueIndex + index + 1) },
+                        )
+                    }
+                }
+            }
+        }
+
         if (playbackState is PlaybackState.Failed) {
             StatusCard(playbackState.message, darkTheme)
         }
@@ -939,7 +966,7 @@ fun SquareSettingsPage(
         )
         SettingRow(
             title = "YouTube Music",
-            subtitle = "Anonymous search is connected. Account library and playback are still being ported.",
+            subtitle = "Anonymous catalogue search and public audio streaming are connected. Personal account library is not connected yet.",
             trailing = { StatusPill("Connected", darkTheme) },
             darkTheme = darkTheme,
         )
