@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <p align="center">
   <img src="docs/square.png" width="112" alt="">
 </p>
@@ -226,3 +227,6 @@ section 13 of both licences allows.
    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=lelonio/square&type=date&legend=top-left" />
  </picture>
 </a>
+=======
+# Square-Windows
+>>>>>>> origin/main
