@@ -78,8 +78,26 @@ class YouTubeMusicPlaybackEngine(
                 }
                 nextPlayer.setOnEndOfMedia {
                     if (player === nextPlayer) {
-                        disposeCurrentPlayer()
-                        mutableState.value = PlaybackState.Idle
+                        val actualDurationMs = nextPlayer.totalDuration.toMillis()
+                            .takeIf { it.isFinite() && it > 0 }
+                            ?.toLong()
+                        val expectedDurationMs = track.durationMs
+                        val endedEarly = actualDurationMs != null &&
+                            expectedDurationMs != null &&
+                            actualDurationMs < expectedDurationMs * 0.75 &&
+                            expectedDurationMs - actualDurationMs > 10_000L
+
+                        if (endedEarly) {
+                            val message = "Audio ended after ${formatDuration(actualDurationMs!!)}, " +
+                                "but the catalogue lists ${formatDuration(expectedDurationMs)}. " +
+                                "The downloaded stream may be incomplete; see the PowerShell log."
+                            System.err.println("[SquarePlayback] Early end: $message")
+                            disposeCurrentPlayer()
+                            mutableState.value = PlaybackState.Failed(message, track)
+                        } else {
+                            disposeCurrentPlayer()
+                            mutableState.value = PlaybackState.Idle
+                        }
                     }
                 }
                 nextPlayer.setOnError {
