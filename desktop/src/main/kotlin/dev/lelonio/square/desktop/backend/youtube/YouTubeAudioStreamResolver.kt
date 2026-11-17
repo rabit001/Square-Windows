@@ -118,11 +118,10 @@ class YouTubeAudioStreamResolver {
     }
 }
 
-/** Prefer progressive HTTP audio formats supported by JavaFX on Windows. */
+/** Prefer direct URL-backed AAC/MP3 audio streams supported by JavaFX on Windows. */
 internal fun selectJavaFxCompatibleAudioStream(streams: List<AudioStream>): AudioStream? {
     val httpStreams = streams.filter { stream ->
         stream.isUrl &&
-            stream.deliveryMethod.name == "PROGRESSIVE_HTTP" &&
             (
                 stream.content.startsWith("https://", ignoreCase = true) ||
                     stream.content.startsWith("http://", ignoreCase = true)
