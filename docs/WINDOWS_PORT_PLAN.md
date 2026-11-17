@@ -55,6 +55,7 @@ Preserve the upstream GPL-3.0-or-later licence and notices. Audit every dependen
 
 - [x] Imported upstream source into this independent repository
 - [x] Created isolated desktop build and first UI shell
+- [x] Ported Square's Home/New/Radio/Library/Search navigation model and floating mini-player dock to the desktop UI
 - [x] Launched the desktop shell on Windows
 - [x] Generated the Windows installer package on Windows
 - [x] Added an Android-independent desktop provider and playback contract

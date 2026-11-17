@@ -1,64 +1,46 @@
 # Square Desktop
 
-Windows desktop port workspace for the upstream [Square](https://github.com/Lelonio/Square) Android music client.
+A Windows desktop port of the original [Square](https://github.com/Lelonio/Square) music client.
 
-This is a separate Gradle build. It does not alter the Android app's Gradle modules or Android build configuration.
+This is an independent public repository with no GitHub fork relationship. The Android source remains intact under `app/`; the Windows application is built separately under `desktop/`.
 
-## Target
+## Windows preview
 
-- Windows 11 and Windows 10, 64-bit
-- 4 GB RAM compatibility target, with a low-memory operating mode
-- Spotify and YouTube Music support
-- Desktop installer output: Windows `.exe`
-- Existing Square visual language and feature set, adapted for keyboard, mouse and desktop layouts
+Requirements: Windows 10/11 x64 and JDK 17 or newer.
 
-The 4 GB figure is a compatibility goal, not a performance guarantee. We will profile idle, browsing and playback memory on constrained hardware before calling the target supported.
-
-## Build the desktop preview
-
-Requirements:
-
-- 64-bit Windows
-- JDK 17 or newer
-- Internet access for the first Gradle dependency download
-
-From the repository root in PowerShell:
+Run from the repository root:
 
 ```powershell
 .\gradlew.bat -p desktop run
 ```
 
-Create the Windows installer:
+Build the Windows installer:
 
 ```powershell
 .\gradlew.bat -p desktop packageExe
 ```
 
-Run desktop unit tests:
+Run desktop tests:
 
 ```powershell
 .\gradlew.bat -p desktop test
 ```
 
-## Current integrations
+## UI port status
 
-- Anonymous YouTube Music song-catalogue search using the vendored InnerTube client.
-- A first audio playback spike that resolves an item through NewPipeExtractor and plays AAC/M4A or MP3 through JavaFX Media on Windows.
+The desktop UI now follows Square's main navigation model: Home, New, Radio, Library and Search, with an integrated mini-player dock and an expanded player screen. It uses the original Square neutral palette, violet accent, Instrument Serif display face and Phosphor icon family.
 
-The playback spike downloads the selected public audio stream in bounded chunks to a temporary `.m4a` or `.mp3` file, then opens that local file with JavaFX Media. This avoids a mismatch between NewPipe's `audio/mp4` MIME label and JavaFX's documented M4A file recognition. The local file is deleted when playback is stopped, replaced or the player is closed. Real playback still needs Windows verification. This uses undocumented YouTube interfaces and may stop working when the provider changes them. It does not provide Google account sign-in, the YouTube Music library, paid/account-only content, or a guarantee of service availability. Spotify authentication and playback are not connected yet.
+The current Home, Library and Search pages use desktop state and the YouTube Music search provider. New and Radio provide entry points into catalogue searches. The full Android account state, Spotify integration, personalised catalogue shelves, playlists, lyrics, downloads, queue, EQ/effects and advanced player UI remain to be ported.
 
-## Desktop backend boundary
+## Playback and provider status
 
-- `model/` contains provider-neutral catalogue types.
-- `backend/MusicProvider.kt` defines desktop account and search operations.
-- `backend/MusicProviderRegistry.kt` owns registered providers and source selection.
-- `backend/youtube/YouTubeMusicSearchProvider.kt` adapts anonymous song search to the desktop contract.
-- `backend/youtube/YouTubeAudioStreamResolver.kt` resolves supported audio stream URLs.
-- `playback/PlaybackEngine.kt` defines playback state and controls without Android Media3.
-- `playback/YouTubeMusicPlaybackEngine.kt` uses JavaFX Media as the initial desktop output engine.
+- Anonymous YouTube Music song search uses Square's vendored InnerTube source.
+- A Windows playback spike resolves public AAC/M4A or MP3 streams and stages them to disk before JavaFX Media playback. Byte-range continuation and early-end validation are included. Live playback must still be tested on Windows.
+- Google account sign-in and the YouTube Music library are not connected.
+- Spotify desktop authentication and playback are not connected.
 
-The desktop build compiles the upstream `innertube/src/main/kotlin` sources directly as JVM sources. The Android `innertube` module and its build configuration remain unchanged. A small JVM logging bridge substitutes for the Android Timber logger at desktop compile/runtime.
+Some YouTube access uses undocumented interfaces and is not an official YouTube API integration. Provider policies and permissions are separate from the source-code licence.
 
-Provider adapters must use desktop-compatible networking, authentication and secure storage. Playback engines must use a Windows-compatible audio output. Do not import Android `Context`, Android Media3 or Android services into the desktop module.
+## Licensing
 
-See [the Windows port plan](../docs/WINDOWS_PORT_PLAN.md) for the staged implementation and memory constraints.
+The upstream Square project is licensed under GPL-3.0-or-later. Preserve upstream copyright notices and applicable third-party licence files. The Instrument Serif font bundled with this desktop UI is licensed under the SIL Open Font License; see `licenses/InstrumentSerif-OFL.txt`.
