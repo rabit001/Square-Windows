@@ -2,8 +2,8 @@ package dev.lelonio.square.desktop.playback
 
 import dev.lelonio.square.desktop.backend.youtube.YouTubeAudioStreamResolver
 import dev.lelonio.square.desktop.model.MusicTrack
-import java.io.File
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicLong
 import javafx.scene.media.Media
 import javafx.scene.media.MediaPlayer
 import javafx.util.Duration
@@ -13,10 +13,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * First Windows playback spike for YouTube Music.
+ * Windows playback engine for public YouTube Music audio.
  *
- * Stream resolution is done on an IO dispatcher; JavaFX MediaPlayer creation
- * and control are confined to the JavaFX Application Thread.
+ * It resolves a stream URL on IO and gives JavaFX a loopback HTTP URL. The
+ * proxy forwards byte ranges, allowing playback to start before the complete
+ * song has downloaded.
  */
 class YouTubeMusicPlaybackEngine(
     private val resolver: YouTubeAudioStreamResolver = YouTubeAudioStreamResolver(),
@@ -28,8 +29,9 @@ class YouTubeMusicPlaybackEngine(
     // Accessed only on the JavaFX Application Thread.
     private var player: MediaPlayer? = null
     private var activeTrack: MusicTrack? = null
-    private var activeAudioFile: File? = null
+    private var activeStreamProxy: LocalAudioStreamProxy? = null
     private var lastReportedSecond = -1L
+    private val playRequestGeneration = AtomicLong(0)
     @Volatile private var runtimeStarted = false
 
     private suspend fun <T> onFxThread(block: () -> T): T {
@@ -38,21 +40,28 @@ class YouTubeMusicPlaybackEngine(
     }
 
     override suspend fun play(track: MusicTrack) {
+        val requestId = playRequestGeneration.incrementAndGet()
         mutableState.value = PlaybackState.Buffering(track)
 
         try {
             val resolvedAudio = resolver.resolve(track)
+            if (requestId != playRequestGeneration.get()) return
+
             onFxThread {
+                if (requestId != playRequestGeneration.get()) return@onFxThread
+
                 disposeCurrentPlayer()
                 activeTrack = track
-                activeAudioFile = resolvedAudio.file
                 lastReportedSecond = -1L
 
-                val media = Media(resolvedAudio.file.toURI().toString())
+                val proxy = LocalAudioStreamProxy(resolvedAudio)
+                activeStreamProxy = proxy
+
+                val media = Media(proxy.mediaUri)
                 media.setOnError {
                     failIfCurrent(
                         track,
-                        media.error?.message ?: "Windows Media could not open the audio stream.",
+                        media.error?.message ?: "Windows Media could not open the YouTube audio stream.",
                     )
                 }
 
@@ -82,17 +91,21 @@ class YouTubeMusicPlaybackEngine(
                         val actualDurationMs = nextPlayer.totalDuration.toMillis()
                             .takeIf { it.isFinite() && it > 0 }
                             ?.toLong()
-                        val expectedDurationMs = track.durationMs
+                        val expectedDurationMs = resolvedAudio.expectedDurationMs
                         val endedEarly = actualDurationMs != null &&
                             expectedDurationMs != null &&
+                            expectedDurationMs > 10_000L &&
                             actualDurationMs < expectedDurationMs * 0.75 &&
                             expectedDurationMs - actualDurationMs > 10_000L
 
                         if (endedEarly) {
                             val message = "Audio ended after ${formatDuration(actualDurationMs!!)}, " +
                                 "but the catalogue lists ${formatDuration(expectedDurationMs)}. " +
-                                "The downloaded stream may be incomplete; see the PowerShell log."
-                            System.err.println("[SquarePlayback] Early end: $message")
+                                "The upstream stream ended early; try the track again."
+                            System.err.println(
+                                "[SquarePlayback] Early end: $message; stream=${resolvedAudio.streamId}; " +
+                                    "bitrate=${resolvedAudio.streamBitrate}; format=${resolvedAudio.format}",
+                            )
                             disposeCurrentPlayer()
                             mutableState.value = PlaybackState.Failed(message, track)
                         } else {
@@ -121,10 +134,12 @@ class YouTubeMusicPlaybackEngine(
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
-            mutableState.value = PlaybackState.Failed(
-                error.message ?: "Could not start YouTube Music playback.",
-                track,
-            )
+            if (requestId == playRequestGeneration.get()) {
+                mutableState.value = PlaybackState.Failed(
+                    error.message ?: "Could not start YouTube Music playback.",
+                    track,
+                )
+            }
         }
     }
 
@@ -143,6 +158,7 @@ class YouTubeMusicPlaybackEngine(
     }
 
     override suspend fun stop() {
+        playRequestGeneration.incrementAndGet()
         onFxThread {
             disposeCurrentPlayer()
             mutableState.value = PlaybackState.Idle
@@ -150,6 +166,7 @@ class YouTubeMusicPlaybackEngine(
     }
 
     override suspend fun release() {
+        playRequestGeneration.incrementAndGet()
         onFxThread {
             disposeCurrentPlayer()
             mutableState.value = PlaybackState.Idle
@@ -159,6 +176,7 @@ class YouTubeMusicPlaybackEngine(
 
     /** Called synchronously while the Compose window is closing. */
     fun shutdown() {
+        playRequestGeneration.incrementAndGet()
         if (!runtimeStarted) return
         JavaFxMediaRuntime.shutdown {
             disposeCurrentPlayer()
@@ -172,10 +190,8 @@ class YouTubeMusicPlaybackEngine(
         }
         player = null
         activeTrack = null
-        activeAudioFile?.let { file ->
-            if (!file.delete() && file.exists()) file.deleteOnExit()
-        }
-        activeAudioFile = null
+        activeStreamProxy?.close()
+        activeStreamProxy = null
         lastReportedSecond = -1L
     }
 
@@ -189,6 +205,7 @@ class YouTubeMusicPlaybackEngine(
 
     private fun failIfCurrent(track: MusicTrack, message: String) {
         if (activeTrack?.id == track.id) {
+            disposeCurrentPlayer()
             mutableState.value = PlaybackState.Failed(message, track)
         }
     }

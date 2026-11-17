@@ -28,14 +28,14 @@ Run desktop tests:
 
 ## UI port status
 
-The desktop UI now follows Square's main navigation model: Home, New, Radio, Library and Search, with an integrated mini-player dock and an expanded player screen. It uses the original Square neutral palette, violet accent, Instrument Serif display face and Phosphor icon family.
+The desktop UI follows Square's main navigation model: Home, New, Radio, Library and Search, with an integrated mini-player dock and an expanded player screen. It uses the original Square neutral palette, violet accent, Instrument Serif display face and Phosphor icon family.
 
 The current Home, Library and Search pages use desktop state and the YouTube Music search provider. New and Radio provide entry points into catalogue searches. The full Android account state, Spotify integration, personalised catalogue shelves, playlists, lyrics, downloads, queue, EQ/effects and advanced player UI remain to be ported.
 
 ## Playback and provider status
 
 - Anonymous YouTube Music song search uses Square's vendored InnerTube source.
-- A Windows playback spike resolves public AAC/M4A or MP3 streams and stages them to disk before JavaFX Media playback. Byte-range continuation and early-end validation are included. Live playback must still be tested on Windows.
+- Windows playback resolves public AAC/M4A or MP3 stream URLs and relays them through a loopback HTTP proxy. JavaFX receives an explicit audio MIME type and its byte-range requests are forwarded upstream, so playback can begin before the whole track has downloaded.
 - Google account sign-in and the YouTube Music library are not connected.
 - Spotify desktop authentication and playback are not connected.
 
