@@ -178,10 +178,13 @@ private fun SquareDesktopApp(playbackEngine: YouTubeMusicPlaybackEngine) {
             is PlaybackState.Completed -> state.track.durationMs ?: 0L
             else -> 0L
         }
-        if (position > 3_000L) {
-            scope.launch { playbackEngine.seekTo(0L) }
-        } else if (playQueueIndex > 0) {
-            startQueueItem(playQueueIndex - 1)
+        when {
+            playbackState is PlaybackState.Completed && playQueueIndex > 0 ->
+                startQueueItem(playQueueIndex - 1)
+            position > 3_000L ->
+                scope.launch { playbackEngine.seekTo(0L) }
+            playQueueIndex > 0 ->
+                startQueueItem(playQueueIndex - 1)
         }
     }
 
