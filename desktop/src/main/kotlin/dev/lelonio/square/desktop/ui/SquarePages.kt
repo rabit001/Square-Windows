@@ -39,6 +39,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,10 +67,14 @@ import com.adamglin.phosphoricons.regular.Play
 import com.adamglin.phosphoricons.regular.CaretRight
 import com.adamglin.phosphoricons.regular.House
 import com.adamglin.phosphoricons.regular.SquaresFour
+import dev.lelonio.square.desktop.model.MusicAlbum
+import dev.lelonio.square.desktop.model.MusicArtist
+import dev.lelonio.square.desktop.model.MusicPlaylist
+import dev.lelonio.square.desktop.model.MusicSearchItem
 import dev.lelonio.square.desktop.model.MusicTrack
+import dev.lelonio.square.desktop.model.MusicTrackKind
 import dev.lelonio.square.desktop.playback.PlaybackState
 import java.util.Locale
-import kotlin.math.roundToLong
 
 @Composable
 fun SquarePageHeader(
@@ -178,11 +186,33 @@ fun SquareHomePage(
     }
 }
 
+private enum class SearchFilter(val label: String) {
+    ALL("All"),
+    SONGS("Songs"),
+    VIDEOS("Videos"),
+    ARTISTS("Artists"),
+    ALBUMS("Albums"),
+    PLAYLISTS("Playlists"),
+    PODCASTS("Podcasts"),
+    EPISODES("Episodes"),
+}
+
+private fun MusicSearchItem.matches(filter: SearchFilter): Boolean = when (filter) {
+    SearchFilter.ALL -> true
+    SearchFilter.SONGS -> this is MusicTrack && kind == MusicTrackKind.SONG
+    SearchFilter.VIDEOS -> this is MusicTrack && kind == MusicTrackKind.VIDEO
+    SearchFilter.ARTISTS -> this is MusicArtist && !isProfile
+    SearchFilter.ALBUMS -> this is MusicAlbum
+    SearchFilter.PLAYLISTS -> this is MusicPlaylist && !isPodcast
+    SearchFilter.PODCASTS -> this is MusicPlaylist && isPodcast
+    SearchFilter.EPISODES -> this is MusicTrack && kind == MusicTrackKind.EPISODE
+}
+
 @Composable
 fun SquareSearchPage(
     query: String,
     onQueryChange: (String) -> Unit,
-    results: List<MusicTrack>,
+    results: List<MusicSearchItem>,
     isSearching: Boolean,
     errorMessage: String?,
     hasSearched: Boolean,
@@ -192,6 +222,9 @@ fun SquareSearchPage(
     onLoadMore: () -> Unit,
     onPlay: (MusicTrack) -> Unit,
 ) {
+    var selectedFilter by remember(query) { mutableStateOf(SearchFilter.ALL) }
+    val visibleResults = results.filter { it.matches(selectedFilter) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -202,7 +235,7 @@ fun SquareSearchPage(
         SquarePageHeader(
             eyebrow = "Explore the catalogue",
             title = "Search",
-            subtitle = "Find songs and artists across YouTube Music.",
+            subtitle = "Find songs, artists, albums, playlists, videos and podcasts.",
             darkTheme = darkTheme,
         )
 
@@ -244,51 +277,162 @@ fun SquareSearchPage(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            FilterPill(label = "All", selected = true, darkTheme = darkTheme)
-            FilterPill(label = "Songs", selected = false, darkTheme = darkTheme, enabled = false)
-            FilterPill(label = "Artists", selected = false, darkTheme = darkTheme, enabled = false)
-            FilterPill(label = "Albums", selected = false, darkTheme = darkTheme, enabled = false)
-            FilterPill(label = "Playlists", selected = false, darkTheme = darkTheme, enabled = false)
+            SearchFilter.entries.forEach { filter ->
+                FilterPill(
+                    label = filter.label,
+                    selected = selectedFilter == filter,
+                    darkTheme = darkTheme,
+                    onClick = { selectedFilter = filter },
+                )
+            }
         }
 
-        if (isSearching) {
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 35.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
-                Spacer(Modifier.width(12.dp))
-                Text("Searching YouTube Music…", color = squareMuted(darkTheme))
+        when {
+            isSearching -> {
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 35.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(12.dp))
+                    Text("Searching YouTube Music…", color = squareMuted(darkTheme))
+                }
             }
-        } else if (!errorMessage.isNullOrBlank()) {
-            StatusCard(message = errorMessage, darkTheme = darkTheme)
-        } else if (hasSearched && results.isEmpty()) {
-            StatusCard(message = "No songs found for “$query”. Try another search.", darkTheme = darkTheme)
-        } else if (!hasSearched) {
-            SearchWelcome(darkTheme = darkTheme)
-        } else {
-            SectionHeading(
-                title = "Songs",
-                action = "${results.size} results",
-                onAction = null,
-                darkTheme = darkTheme,
+
+            !errorMessage.isNullOrBlank() -> StatusCard(message = errorMessage, darkTheme = darkTheme)
+
+            hasSearched && results.isEmpty() -> {
+                StatusCard(message = "No results found for “$query”. Try another search.", darkTheme = darkTheme)
+            }
+
+            hasSearched && visibleResults.isEmpty() -> {
+                StatusCard(message = "No ${selectedFilter.label.lowercase(Locale.ROOT)} found for “$query”.", darkTheme = darkTheme)
+            }
+
+            !hasSearched -> SearchWelcome(darkTheme = darkTheme)
+
+            else -> {
+                val orderedGroups = listOf(
+                    "Songs" to visibleResults.filterIsInstance<MusicTrack>().filter { it.kind == MusicTrackKind.SONG },
+                    "Videos" to visibleResults.filterIsInstance<MusicTrack>().filter { it.kind == MusicTrackKind.VIDEO },
+                    "Artists" to visibleResults.filterIsInstance<MusicArtist>().filter { !it.isProfile },
+                    "Albums" to visibleResults.filterIsInstance<MusicAlbum>(),
+                    "Playlists" to visibleResults.filterIsInstance<MusicPlaylist>().filter { !it.isPodcast },
+                    "Podcasts" to visibleResults.filterIsInstance<MusicPlaylist>().filter { it.isPodcast },
+                    "Episodes" to visibleResults.filterIsInstance<MusicTrack>().filter { it.kind == MusicTrackKind.EPISODE },
+                )
+
+                orderedGroups.forEach { (title, items) ->
+                    if (items.isNotEmpty()) {
+                        SectionHeading(
+                            title = title,
+                            action = if (selectedFilter == SearchFilter.ALL) "${items.size}" else null,
+                            onAction = null,
+                            darkTheme = darkTheme,
+                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            items.forEachIndexed { index, item ->
+                                when (item) {
+                                    is MusicTrack -> SquareTrackRow(
+                                        track = item,
+                                        index = index + 1,
+                                        darkTheme = darkTheme,
+                                        onPlay = { onPlay(item) },
+                                    )
+                                    is MusicArtist -> SearchEntityRow(
+                                        title = item.title,
+                                        subtitle = if (item.isProfile) "Profile" else "Artist",
+                                        artworkUrl = item.artworkUrl,
+                                        index = index + 1,
+                                        isArtist = true,
+                                        darkTheme = darkTheme,
+                                    )
+                                    is MusicAlbum -> SearchEntityRow(
+                                        title = item.title,
+                                        subtitle = listOfNotNull(
+                                            item.artists.joinToString(", ").takeIf { it.isNotBlank() },
+                                            item.year?.toString(),
+                                        ).joinToString(" · ").ifBlank { "Album" },
+                                        artworkUrl = item.artworkUrl,
+                                        index = index + 1,
+                                        darkTheme = darkTheme,
+                                    )
+                                    is MusicPlaylist -> SearchEntityRow(
+                                        title = item.title,
+                                        subtitle = listOfNotNull(
+                                            if (item.isPodcast) "Podcast" else "Playlist",
+                                            item.ownerName?.takeIf { it.isNotBlank() },
+                                            item.itemCount?.let { "$it items" },
+                                        ).joinToString(" · "),
+                                        artworkUrl = item.artworkUrl,
+                                        index = index + 1,
+                                        darkTheme = darkTheme,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (hasMore) {
+                    TextButton(
+                        onClick = onLoadMore,
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                        enabled = !isSearching,
+                    ) {
+                        Text("Load more results")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchEntityRow(
+    title: String,
+    subtitle: String,
+    artworkUrl: String?,
+    index: Int,
+    darkTheme: Boolean,
+    isArtist: Boolean = false,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(15.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            index.toString().padStart(2, '0'),
+            color = squareMuted(darkTheme),
+            fontSize = 11.sp,
+            modifier = Modifier.width(32.dp),
+        )
+        Box(Modifier.clip(if (isArtist) CircleShape else RoundedCornerShape(12.dp))) {
+            SquareArtwork(artworkUrl, modifier = Modifier.size(48.dp))
+        }
+        Column(
+            modifier = Modifier.weight(1f).padding(horizontal = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text(
+                title,
+                color = squareInk(darkTheme),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                results.forEachIndexed { index, track ->
-                    SquareTrackRow(
-                        track = track,
-                        index = index + 1,
-                        darkTheme = darkTheme,
-                        onPlay = { onPlay(track) },
-                    )
-                }
-            }
-            if (hasMore) {
-                TextButton(onClick = onLoadMore, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                    Text("Load more results")
-                }
-            }
+            Text(
+                subtitle,
+                color = squareMuted(darkTheme),
+                fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -571,7 +715,7 @@ fun SquareSettingsPage(
         )
         SettingRow(
             title = "YouTube Music",
-            subtitle = "Anonymous song search is connected. Account library and playback are still being ported.",
+            subtitle = "Anonymous search is connected. Account library and playback are still being ported.",
             trailing = { StatusPill("Connected", darkTheme) },
             darkTheme = darkTheme,
         )
