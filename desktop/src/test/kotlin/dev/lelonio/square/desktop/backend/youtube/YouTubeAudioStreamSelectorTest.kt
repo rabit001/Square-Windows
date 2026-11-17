@@ -46,7 +46,6 @@ class YouTubeAudioStreamSelectorTest {
         assertNull(selected)
     }
 
-
     @Test
     fun usesM4aAndMp3FileExtensionsForJavaFxDetection() {
         assertEquals(".m4a", audioFileSuffix(MediaFormat.M4A))
