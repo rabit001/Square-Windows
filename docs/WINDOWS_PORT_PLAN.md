@@ -59,8 +59,8 @@ Preserve the upstream GPL-3.0-or-later licence and notices. Audit every dependen
 - [x] Generated the Windows installer package on Windows
 - [x] Added an Android-independent desktop provider and playback contract
 - [x] Added anonymous YouTube Music song-search adapter using the vendored InnerTube client
-- [x] Added a Windows AAC/MP3 audio playback spike using JavaFX Media and NewPipeExtractor
-- [ ] Run the audio playback spike on Windows and verify real track playback
+- [x] Added a Windows AAC/MP3 playback spike using NewPipeExtractor and JavaFX Media, with bounded temporary-file staging to handle the M4A MIME mismatch
+- [ ] Run the corrected temporary-file playback path on Windows and verify real track playback
 - [ ] Establish baseline memory measurements
 - [ ] Implement reliable YouTube Music stream handling, queue and media controls
 - [ ] Implement YouTube Music account/library support where permitted
