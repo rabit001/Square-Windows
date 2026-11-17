@@ -2,6 +2,7 @@ package dev.lelonio.square.desktop.playback
 
 import dev.lelonio.square.desktop.backend.youtube.YouTubeAudioStreamResolver
 import dev.lelonio.square.desktop.model.MusicTrack
+import java.io.File
 import javafx.scene.media.Media
 import javafx.scene.media.MediaPlayer
 import javafx.util.Duration
@@ -26,6 +27,7 @@ class YouTubeMusicPlaybackEngine(
     // Accessed only on the JavaFX Application Thread.
     private var player: MediaPlayer? = null
     private var activeTrack: MusicTrack? = null
+    private var activeAudioFile: File? = null
     private var lastReportedSecond = -1L
     @Volatile private var runtimeStarted = false
 
@@ -38,13 +40,14 @@ class YouTubeMusicPlaybackEngine(
         mutableState.value = PlaybackState.Buffering(track)
 
         try {
-            val streamUrl = resolver.resolve(track)
+            val resolvedAudio = resolver.resolve(track)
             onFxThread {
                 disposeCurrentPlayer()
                 activeTrack = track
+                activeAudioFile = resolvedAudio.file
                 lastReportedSecond = -1L
 
-                val media = Media(streamUrl)
+                val media = Media(resolvedAudio.file.toURI().toString())
                 media.setOnError {
                     failIfCurrent(
                         track,
@@ -150,6 +153,10 @@ class YouTubeMusicPlaybackEngine(
         }
         player = null
         activeTrack = null
+        activeAudioFile?.let { file ->
+            if (!file.delete() && file.exists()) file.deleteOnExit()
+        }
+        activeAudioFile = null
         lastReportedSecond = -1L
     }
 
