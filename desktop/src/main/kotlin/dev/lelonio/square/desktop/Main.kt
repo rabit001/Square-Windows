@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
@@ -34,6 +36,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import dev.lelonio.square.desktop.backend.youtube.YouTubeMusicSearchProvider
 import dev.lelonio.square.desktop.model.MusicTrack
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -109,7 +112,8 @@ private fun SquareDesktopApp() {
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxSize()
-                            .padding(32.dp),
+                            .padding(32.dp)
+                            .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
                         Text(
@@ -211,6 +215,8 @@ private fun YouTubeMusicSearchPanel() {
                 val tracks = page.items.filterIsInstance<MusicTrack>()
                 results = if (loadNextPage) results + tracks else tracks
                 nextPageToken = page.nextPageToken
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (error: Exception) {
                 errorMessage = error.message ?: "YouTube Music search failed."
             } finally {
