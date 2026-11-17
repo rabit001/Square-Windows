@@ -49,7 +49,7 @@ The development machine has 8 GB RAM. The separate desktop Gradle build is confi
 
 ## Licensing and attribution
 
-Preserve the upstream GPL-3.0-or-later licence and notices. Audit every dependency before bundling it. In particular, the upstream repository identifies its lyrics view as AGPL-3.0 and documents additional third-party components and service terms. Keep required source notices and corresponding source available when distributing a covered binary. This project is an unofficial community port and is not affiliated with Spotify or Google.
+Preserve the upstream GPL-3.0-or-later licence and notices. Audit every dependency before bundling it. In particular, the upstream repository identifies its lyrics view as AGPL-3.0 and documents additional third-party components and service terms. Keep required source notices and corresponding source available when distributing a covered binary. This project is an unofficial community port and is not affiliated with Spotify or Google. InnerTube search uses an undocumented interface and may change or become unavailable; this is not an official YouTube API integration.
 
 ## Status
 
@@ -57,6 +57,9 @@ Preserve the upstream GPL-3.0-or-later licence and notices. Audit every dependen
 - [x] Created isolated desktop build and first UI shell
 - [x] Launched the desktop shell on Windows
 - [x] Generated the Windows installer package on Windows
+- [x] Added an Android-independent desktop provider and playback contract
+- [x] Added anonymous YouTube Music song-search adapter using the vendored InnerTube client
+- [ ] Run the YouTube search integration on Windows and verify live responses
 - [ ] Establish baseline memory measurements
+- [ ] Implement YouTube Music stream resolution and desktop playback
 - [ ] Implement Spotify Windows playback spike
-- [ ] Implement YouTube Music Windows playback spike

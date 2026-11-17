@@ -40,14 +40,17 @@ Run desktop unit tests:
 .\gradlew.bat -p desktop test
 ```
 
-The initial app remains a UI shell. The desktop provider and playback contracts are now separated from Android APIs, but real Spotify and YouTube Music adapters are not connected yet.
+The desktop now includes an anonymous YouTube Music song-catalogue search adapter using the upstream vendored InnerTube client. Google account sign-in, the YouTube Music library, stream resolution, and playback are not yet connected. Spotify's desktop adapter and playback engine are also not yet connected.
 
 ## Desktop backend boundary
 
 - `model/` contains provider-neutral catalogue types.
 - `backend/MusicProvider.kt` defines desktop account and search operations.
 - `backend/MusicProviderRegistry.kt` owns registered providers and source selection.
+- `backend/youtube/YouTubeMusicSearchProvider.kt` adapts anonymous song search to the desktop contract.
 - `playback/PlaybackEngine.kt` defines playback state and controls without Android Media3.
+
+The desktop build compiles the upstream `innertube/src/main/kotlin` sources directly as JVM sources. The Android `innertube` module and its build configuration remain unchanged. A small JVM logging bridge substitutes for the Android Timber logger at desktop compile/runtime.
 
 Provider adapters must use desktop-compatible networking, authentication and secure storage. Playback engines must use a Windows-compatible audio output. Do not import Android `Context`, Android Media3 or Android services into the desktop module.
 
