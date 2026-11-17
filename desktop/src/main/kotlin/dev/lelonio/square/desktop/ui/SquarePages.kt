@@ -1,5 +1,7 @@
 package dev.lelonio.square.desktop.ui
 
+import dev.lelonio.square.desktop.SquarePage
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -156,7 +158,7 @@ fun SquareHomePage(
                 modifier = Modifier.weight(1f),
                 title = "Your library",
                 subtitle = "Return to the tracks you played here",
-                icon = PhosphorIcons.Regular.Library,
+                icon = PhosphorIcons.Regular.MusicNotes,
                 darkTheme = darkTheme,
                 onClick = onOpenLibrary,
             )
@@ -368,7 +370,7 @@ fun SquareNewPage(
             modifier = Modifier.fillMaxWidth(),
             title = "Trending now",
             subtitle = "Explore what listeners are searching for",
-            icon = PhosphorIcons.Regular.TrendUp,
+            icon = PhosphorIcons.Regular.Sparkle,
             darkTheme = darkTheme,
             onClick = { onSearch("trending songs 2026") },
         )
@@ -410,7 +412,7 @@ fun SquareRadioPage(
             modifier = Modifier.fillMaxWidth(),
             title = "Your mood",
             subtitle = "Search for music to match the moment",
-            icon = PhosphorIcons.Regular.Mountains,
+            icon = PhosphorIcons.Regular.Broadcast,
             darkTheme = darkTheme,
             onClick = { onSearch("chill music mix") },
         )
@@ -455,8 +457,8 @@ fun SquarePlayerPage(
             Spacer(Modifier.weight(1f))
             Text("NOW PLAYING", color = squareMuted(darkTheme), fontSize = 10.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.weight(1f))
-            IconButton(onClick = onStop, enabled = track != null) {
-                Icon(PhosphorIcons.Regular.Stop, contentDescription = "Stop")
+            TextButton(onClick = onStop, enabled = track != null) {
+                Text("Stop")
             }
         }
 
@@ -496,7 +498,7 @@ fun SquarePlayerPage(
 
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(28.dp)) {
             IconButton(onClick = {}, enabled = false, modifier = Modifier.size(46.dp)) {
-                Icon(PhosphorIcons.Regular.SkipBack, contentDescription = "Previous", tint = squareMuted(darkTheme))
+                Icon(PhosphorIcons.Regular.CaretLeft, contentDescription = "Previous", tint = squareMuted(darkTheme))
             }
             IconButton(
                 onClick = onPlayPause,
@@ -514,7 +516,7 @@ fun SquarePlayerPage(
                 )
             }
             IconButton(onClick = {}, enabled = false, modifier = Modifier.size(46.dp)) {
-                Icon(PhosphorIcons.Regular.SkipForward, contentDescription = "Next", tint = squareMuted(darkTheme))
+                Icon(PhosphorIcons.Regular.CaretRight, contentDescription = "Next", tint = squareMuted(darkTheme))
             }
         }
         if (playbackState is PlaybackState.Failed) {
