@@ -236,7 +236,7 @@ class YouTubeAudioStreamResolver(
                 )
             }
 
-            return ResolvedYouTubeAudio(
+            val resolved = ResolvedYouTubeAudio(
                 file = tempFile,
                 format = format,
                 responseContentType = lastContentType,
@@ -248,6 +248,14 @@ class YouTubeAudioStreamResolver(
                 streamBitrate = stream.averageBitrate,
                 deliveryMethod = stream.deliveryMethod.name,
             )
+            System.err.println(
+                "[SquarePlayback] Download complete: format=${resolved.format}, " +
+                    "bytes=${resolved.byteCount}, expectedBytes=${resolved.expectedByteCount}, " +
+                    "http=${resolved.httpStatusCode}, contentRange=${resolved.contentRange}, " +
+                    "contentType=${resolved.responseContentType}, stream=${resolved.streamId}, " +
+                    "bitrate=${resolved.streamBitrate}, delivery=${resolved.deliveryMethod}",
+            )
+            resolved
         } catch (error: Exception) {
             tempFile.delete()
             throw error
