@@ -8,7 +8,7 @@ This repository is not a GitHub fork of the upstream project. It contains upstre
 
 The first Windows desktop UI shell has been launched, and a Windows `.exe` installer package has been generated successfully.
 
-The current shell is a starting point, not a feature-complete music client. Spotify authentication, YouTube Music integration, catalogue search, and audio playback are **not implemented yet**.
+The current shell is a starting point, not a feature-complete music client. Anonymous YouTube Music song-catalogue search is now wired into the Search screen, but its live response still needs to be tested on Windows. Spotify authentication and playback, Google account sign-in, the YouTube Music library, stream resolution, and audio playback are **not implemented yet**.
 
 ## Run the desktop app
 
