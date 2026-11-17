@@ -1,6 +1,8 @@
 package dev.lelonio.square.desktop.backend
 
+import dev.lelonio.square.desktop.model.MusicDetail
 import dev.lelonio.square.desktop.model.MusicProviderId
+import dev.lelonio.square.desktop.model.MusicSearchItem
 import dev.lelonio.square.desktop.model.MusicSearchPage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlin.test.Test
@@ -69,5 +71,13 @@ class MusicProviderRegistryTest {
         }
 
         override suspend fun search(query: String, pageToken: String?) = MusicSearchPage()
+
+        override suspend fun browse(item: MusicSearchItem): MusicDetail {
+            throw UnsupportedOperationException("Browsing is not used in registry tests.")
+        }
+
+        override suspend fun browseMore(detail: MusicDetail): MusicDetail {
+            throw UnsupportedOperationException("Browsing is not used in registry tests.")
+        }
     }
 }
