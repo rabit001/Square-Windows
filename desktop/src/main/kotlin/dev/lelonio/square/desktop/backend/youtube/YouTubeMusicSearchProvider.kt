@@ -1,8 +1,8 @@
 package dev.lelonio.square.desktop.backend.youtube
 
 import com.metrolist.innertube.YouTube
-import com.metrolist.innertube.models.YouTubeLocale
 import com.metrolist.innertube.models.SongItem
+import com.metrolist.innertube.models.YouTubeLocale
 import dev.lelonio.square.desktop.backend.MusicProvider
 import dev.lelonio.square.desktop.backend.ProviderAuthState
 import dev.lelonio.square.desktop.model.MusicProviderId
@@ -45,8 +45,10 @@ class YouTubeMusicSearchProvider(
             gl = locale.country.ifBlank { "US" },
             hl = locale.toLanguageTag().ifBlank { "en-US" },
         )
-        // Set before the first request so the HTTP cache persists between runs.
+        // InnerTube creates its HTTP client when its singleton is initialized.
+        // Set the directory, then recreate the client so the disk cache is applied.
         YouTube.cacheDir = cacheDirectory
+        YouTube.proxy = null
         YouTube.cookie = null
         YouTube.dataSyncId = null
         YouTube.visitorData = null
@@ -83,7 +85,7 @@ class YouTubeMusicSearchProvider(
             MusicSearchPage(
                 items = result.items
                     .filterIsInstance<SongItem>()
-                    .map(SongItem::toDesktopMusicTrack),
+                    .map { it.toDesktopMusicTrack() },
                 nextPageToken = result.continuation,
             )
         }
