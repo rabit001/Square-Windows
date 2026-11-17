@@ -27,13 +27,19 @@ class YouTubeMusicPlaybackEngine(
     private var player: MediaPlayer? = null
     private var activeTrack: MusicTrack? = null
     private var lastReportedSecond = -1L
+    @Volatile private var runtimeStarted = false
+
+    private suspend fun <T> onFxThread(block: () -> T): T {
+        runtimeStarted = true
+        return JavaFxMediaRuntime.onFxThread(block)
+    }
 
     override suspend fun play(track: MusicTrack) {
         mutableState.value = PlaybackState.Buffering(track)
 
         try {
             val streamUrl = resolver.resolve(track)
-            JavaFxMediaRuntime.onFxThread {
+            onFxThread {
                 disposeCurrentPlayer()
                 activeTrack = track
                 lastReportedSecond = -1L
@@ -101,28 +107,28 @@ class YouTubeMusicPlaybackEngine(
     }
 
     override suspend fun pause() {
-        JavaFxMediaRuntime.onFxThread { player?.pause() }
+        onFxThread { player?.pause() }
     }
 
     override suspend fun resume() {
-        JavaFxMediaRuntime.onFxThread { player?.play() }
+        onFxThread { player?.play() }
     }
 
     override suspend fun seekTo(positionMs: Long) {
-        JavaFxMediaRuntime.onFxThread {
+        onFxThread {
             player?.seek(Duration.millis(positionMs.coerceAtLeast(0).toDouble()))
         }
     }
 
     override suspend fun stop() {
-        JavaFxMediaRuntime.onFxThread {
+        onFxThread {
             disposeCurrentPlayer()
             mutableState.value = PlaybackState.Idle
         }
     }
 
     override suspend fun release() {
-        JavaFxMediaRuntime.onFxThread {
+        onFxThread {
             disposeCurrentPlayer()
             mutableState.value = PlaybackState.Idle
         }
@@ -131,6 +137,7 @@ class YouTubeMusicPlaybackEngine(
 
     /** Called synchronously while the Compose window is closing. */
     fun shutdown() {
+        if (!runtimeStarted) return
         JavaFxMediaRuntime.shutdown {
             disposeCurrentPlayer()
         }
